@@ -1,17 +1,16 @@
 const logger = require('../utils/logger');
+const { documentModel, storage } = require('../registry');
 const { NotFoundError } = require('../utils/errors');
-
-// TODO: Wire up document model when implementing CRUD operations
 
 /**
  * GET /api/documents
  * Returns list of all uploaded documents
  */
 const listDocuments = async (req, res) => {
-  // TODO: Query documents table
+  const documents = await documentModel.findAll();
   res.json({
     success: true,
-    documents: [],
+    documents,
   });
 };
 
@@ -22,10 +21,14 @@ const listDocuments = async (req, res) => {
 const getDocument = async (req, res) => {
   const { id } = req.params;
 
-  // TODO: Query document by ID, throw NotFoundError if missing
+  const document = await documentModel.findById(id);
+  if (!document) {
+    throw new NotFoundError(`Document ${id} not found`);
+  }
+
   res.json({
     success: true,
-    document: null,
+    document,
   });
 };
 
@@ -36,8 +39,16 @@ const getDocument = async (req, res) => {
 const deleteDocument = async (req, res) => {
   const { id } = req.params;
 
-  // TODO: Delete document (CASCADE will remove chunks and messages)
-  // TODO: Delete file from local storage
+  const document = await documentModel.findById(id);
+  if (!document) {
+    throw new NotFoundError(`Document ${id} not found`);
+  }
+
+  // Delete file from local storage
+  await storage.deleteFile(document.filename);
+
+  // Delete database record (CASCADE removes chunks and messages)
+  await documentModel.delete(id);
 
   logger.info(`🗑️ Document ${id} deleted`);
 

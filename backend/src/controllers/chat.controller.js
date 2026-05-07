@@ -1,6 +1,5 @@
 const logger = require('../utils/logger');
-
-// TODO: Wire up embedding, RAG, and LLM services when implementing chat flow
+const { chatPipeline } = require('../registry');
 
 /**
  * POST /api/chat
@@ -11,21 +10,28 @@ const chat = async (req, res) => {
 
   logger.info(`💬 Chat request for document ${documentId}: "${message.substring(0, 50)}..."`);
 
-  // TODO: Implement RAG pipeline
-  // 1. Generate embedding for user query
-  // 2. Retrieve relevant chunks from pgvector
-  // 3. Build context from chunks
-  // 4. Call LLM with context + question
-  // 5. Save to chat history
-  // 6. Return answer
-
-  res.json({
-    success: true,
-    answer: 'Chat endpoint is ready. RAG pipeline implementation coming soon.',
-    documentId,
-    retrievedChunks: 0,
-    tokensUsed: 0,
-  });
+  try {
+    const result = await chatPipeline.ask(documentId, message);
+    
+    res.json({
+      success: true,
+      answer: result.answer,
+      documentId,
+      retrievedChunks: result.chunks,
+      tokensUsed: result.tokensUsed,
+      modelUsed: result.modelUsed
+    });
+  } catch (error) {
+    logger.error('Chat request failed', { documentId, error: error.message });
+    
+    const statusCode = error.name === 'NotFoundError' || error.name === 'BadRequestError' ? 400 : 500;
+    
+    res.status(statusCode).json({
+      success: false,
+      error: error.message,
+      code: error.code || 'CHAT_ERROR'
+    });
+  }
 };
 
 module.exports = { chat };

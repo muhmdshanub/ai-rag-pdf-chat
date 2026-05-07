@@ -34,6 +34,28 @@ class DocumentModel {
     return result.rows[0] || null;
   }
 
+  /**
+   * Retrieves a document and ensures it is ready for chat operations.
+   * Throws domain-specific errors if the document is missing or not processed.
+   * 
+   * @param {number} id 
+   * @throws {NotFoundError} If the document does not exist
+   * @throws {BadRequestError} If the document status is not 'completed'
+   * @returns {Promise<object>} The ready document
+   */
+  async findReadyForChat(id) {
+    const document = await this.findById(id);
+    if (!document) {
+      const { NotFoundError } = require('../utils/errors');
+      throw new NotFoundError(`Document ${id} not found`);
+    }
+    if (document.status !== 'completed') {
+      const { BadRequestError } = require('../utils/errors');
+      throw new BadRequestError(`Document ${id} is not ready (status: ${document.status})`);
+    }
+    return document;
+  }
+
   async updateStatus(id, status, errorMessage = null) {
     const result = await pool.query(
       `UPDATE documents

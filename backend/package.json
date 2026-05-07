@@ -8,7 +8,7 @@
     "dev": "nodemon --watch src src/server.js",
     "db:init": "node src/db/init.js",
     "init-db": "node src/db/init.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "keywords": [
     "rag",
@@ -25,13 +25,15 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "joi": "^18.2.1",
     "multer": "^2.1.1",
-    "pdf-parse": "^1.1.1",
+    "pdf-parse": "^1.1.4",
     "pg": "^8.20.0",
     "redis": "^5.12.1",
     "winston": "^3.17.0"
   },
   "devDependencies": {
+    "jest": "^30.3.0",
     "nodemon": "^3.1.14"
   }
 }

@@ -10,13 +10,7 @@
  */
 
 const logger = require('../utils/logger');
-
-// TODO: Import services when implementing
-// const pdfParser = require('../services/pdf-parser.service');
-// const chunking = require('../services/chunking.service');
-// const embedding = require('../services/embedding.service');
-// const documentModel = require('../models/document.model');
-// const chunkModel = require('../models/chunk.model');
+const { documentPipeline, documentModel } = require('../registry');
 
 /**
  * Register the document processing job handler
@@ -28,30 +22,10 @@ const registerProcessor = (queue) => {
     logger.info(`🔄 Processing document ${documentId}: ${filePath}`);
 
     try {
-      // Step 1: Extract text
-      // const { text, pages } = await pdfParser.extractFromFile(filePath, mimeType);
-      // job.progress(20);
-
-      // Step 2: Chunk text
-      // const chunks = chunking.chunkWithMetadata(text);
-      // job.progress(40);
-
-      // Step 3: Generate embeddings
-      // const embeddings = await embedding.getEmbeddings(chunks.map(c => c.text));
-      // job.progress(60);
-
-      // Step 4: Store in database
-      // const chunksWithEmbeddings = chunks.map((chunk, i) => ({
-      //   ...chunk,
-      //   embedding: embeddings[i],
-      // }));
-      // await chunkModel.createBatch(documentId, chunksWithEmbeddings);
-      // job.progress(80);
-
-      // Step 5: Update document status
-      // await documentModel.updateStatus(documentId, 'completed');
-      // await documentModel.updateChunkCount(documentId, chunks.length);
-      // job.progress(100);
+      // Delegate the entire end-to-end processing to the pipeline
+      await documentPipeline.process(documentId, filePath, (progress) => {
+        job.progress(progress);
+      });
 
       logger.info(`✅ Document ${documentId} processed successfully`);
       return { documentId, status: 'completed' };

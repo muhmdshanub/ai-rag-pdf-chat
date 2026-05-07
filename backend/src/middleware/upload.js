@@ -1,43 +1,39 @@
+/**
+ * Multer Upload Middleware
+ * 
+ * Handles multipart/form-data file uploads with PDF-specific validation.
+ * Uses base storage configuration from the config layer.
+ */
+
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const config = require('../config');
+const { storage, limits } = require('../config/multer');
+const logger = require('../utils/logger');
 
-// Ensure upload directory exists
-const uploadDir = config.uploadDir;
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Configure storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    // Prefix with timestamp to avoid name collisions
-    const uniqueName = `${Date.now()}-${file.originalname}`;
-    cb(null, uniqueName);
-  },
-});
-
-// File filter — only allow PDF and TXT
+/**
+ * File filter - only allow PDFs for this specific middleware
+ */
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = ['application/pdf', 'text/plain'];
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only PDF and TXT files allowed'), false);
+  // Check MIME type
+  if (file.mimetype !== 'application/pdf') {
+    logger.warn('Invalid file type uploaded', {
+      mimetype: file.mimetype,
+      filename: file.originalname
+    });
+    return cb(new Error('Only PDF files are allowed'));
   }
+
+  cb(null, true);
 };
 
-// Create multer instance
+/**
+ * PDF Upload Middleware
+ * Initialized with global storage/limits and local PDF filter.
+ */
 const upload = multer({
   storage,
-  limits: {
-    fileSize: config.maxFileSize,
-  },
   fileFilter,
+  limits
 });
 
-module.exports = upload;
+// Export single file handler (expecting field name 'file')
+module.exports = upload.single('file');

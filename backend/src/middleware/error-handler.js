@@ -31,12 +31,15 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Known operational errors
+  // Known operational errors (AppError, ServiceError, etc.)
   if (err instanceof AppError && err.isOperational) {
-    return res.status(err.statusCode).json({
+    const body = {
       success: false,
       error: err.message,
-    });
+    };
+    if (err.code) body.code = err.code;
+    if (err.service) body.service = err.service;
+    return res.status(err.statusCode).json(body);
   }
 
   // Unknown / programming errors

@@ -22,8 +22,9 @@ const config = {
   huggingfaceApiKey: process.env.HUGGINGFACE_API_KEY || '',
 
   // File Upload
-  maxFileSize: parseInt(process.env.MAX_FILE_SIZE, 10) || 10 * 1024 * 1024, // 10MB
+  maxFileSize: parseInt(process.env.PDF_PARSER_MAX_FILE_SIZE, 10) || 100 * 1024 * 1024, // 100MB
   uploadDir: process.env.UPLOAD_DIR || './uploads',
+  extractionTimeout: parseInt(process.env.PDF_PARSER_EXTRACTION_TIMEOUT, 10) || 60000,
 
   // CORS
   corsOrigins: process.env.CORS_ORIGINS

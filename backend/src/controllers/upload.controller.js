@@ -1,34 +1,182 @@
-const logger = require('../utils/logger');
-const { BadRequestError } = require('../utils/errors');
+/**
+ * Upload Controller
+ * 
+ * Handles file upload endpoint with PDF validation and queue processing.
+ * All service dependencies are resolved through the registry.
+ */
 
-// TODO: Wire up document model and job queue when implementing upload flow
+const { storage, documentModel, documentPipeline } = require('../registry');
+const { getQueue } = require('../jobs/queue');
+const logger = require('../utils/logger');
 
 /**
+ * Handle document upload
+ * 
  * POST /api/upload
- * Handles file upload, saves to DB, and queues processing job
+ * - Receives multipart/form-data with file
+ * - Validates file
+ * - Creates database record
+ * - Queues async processing
+ * - Returns immediately
  */
-const uploadDocument = async (req, res) => {
-  if (!req.file) {
-    throw new BadRequestError('No file provided');
-  }
+exports.uploadDocument = async (req, res, next) => {
+  const startTime = Date.now();
+  
+  try {
+    // Validate file exists
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'No file provided',
+        code: 'NO_FILE'
+      });
+    }
 
-  const { filename, originalname, path: filepath, size, mimetype } = req.file;
+    const { filename, path: filePath, size, mimetype } = req.file;
 
-  logger.info(`📄 File uploaded: ${originalname} (${(size / 1024).toFixed(1)}KB)`);
-
-  // TODO: Save document record to DB
-  // TODO: Queue async processing job (PDF parse → chunk → embed → store)
-
-  res.status(201).json({
-    success: true,
-    message: 'File uploaded. Processing will begin shortly.',
-    document: {
+    logger.info('File upload received', {
       filename,
-      originalName: originalname,
       size,
-      mimeType: mimetype,
-    },
-  });
+      mimetype
+    });
+
+    // Validate MIME type
+    if (mimetype !== 'application/pdf') {
+      await storage.deleteFile(filename);
+      return res.status(400).json({
+        success: false,
+        error: 'Only PDF files are supported',
+        code: 'INVALID_MIME_TYPE'
+      });
+    }
+
+    // Delegate file + PDF validation to the orchestration pipeline
+    try {
+      await documentPipeline.validateUpload(filePath);
+    } catch (error) {
+      await storage.deleteFile(filename);
+      return res.status(400).json({
+        success: false,
+        error: error.message,
+        code: error.code || 'VALIDATION_FAILED'
+      });
+    }
+
+    // Create database record
+    const document = await documentModel.create({
+      filename,
+      originalName: req.file.originalname,
+      filePath,
+      fileSize: size,
+      mimeType: mimetype
+    });
+
+    logger.info('Document record created', {
+      documentId: document.id,
+      filename
+    });
+
+    // Queue async processing job
+    try {
+      const uploadQueue = getQueue();
+      const job = await uploadQueue.add('process-document', {
+        documentId: document.id,
+        filePath: filePath,
+        mimeType: mimetype
+      }, {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000
+        },
+        removeOnComplete: false,
+        removeOnFail: false
+      });
+
+      logger.info('Processing job queued', {
+        jobId: job.id,
+        documentId: document.id
+      });
+    } catch (queueError) {
+      logger.error('Failed to queue document processing', {
+        documentId: document.id,
+        error: queueError.message
+      });
+      
+      // Update document status to failed
+      await documentModel.updateStatus(document.id, 'failed', 'Failed to queue for processing');
+
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to queue document for processing',
+        code: 'QUEUE_ERROR'
+      });
+    }
+
+    const duration = Date.now() - startTime;
+
+    return res.status(202).json({
+      success: true,
+      message: 'Document uploaded and queued for processing',
+      document: {
+        id: document.id,
+        filename: document.filename,
+        status: document.status,
+        size: document.file_size,
+        createdAt: document.created_at
+      },
+      duration
+    });
+
+  } catch (error) {
+    logger.error('Upload error', {
+      error: error.message,
+      stack: error.stack
+    });
+
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error during upload',
+      code: 'UPLOAD_ERROR'
+    });
+  }
 };
 
-module.exports = { uploadDocument };
+/**
+ * Get upload progress
+ * 
+ * GET /api/upload/:documentId/progress
+ */
+exports.getUploadProgress = async (req, res, next) => {
+  try {
+    const { documentId } = req.params;
+
+    const document = await documentModel.findById(documentId);
+
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        error: 'Document not found',
+        code: 'NOT_FOUND'
+      });
+    }
+
+    return res.json({
+      success: true,
+      document: {
+        id: document.id,
+        filename: document.filename,
+        status: document.status,
+        totalChunks: document.total_chunks,
+        progress: document.status === 'completed' ? 100 : (document.status === 'failed' ? 0 : 50)
+      }
+    });
+
+  } catch (error) {
+    logger.error('Progress check error', { error: error.message });
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to check progress'
+    });
+  }
+};
