@@ -6,7 +6,7 @@
 
 const { pool } = require('../config/database');
 
-class ChatMessageModel {
+class chatMessageRepository {
   async create({ documentId, userMessage, aiResponse, retrievedChunkIds, tokensUsed, modelUsed, responseTimeMs }) {
     const result = await pool.query(
       `INSERT INTO chat_messages
@@ -35,4 +35,4 @@ class ChatMessageModel {
   }
 }
 
-module.exports = new ChatMessageModel();
+module.exports = new chatMessageRepository();

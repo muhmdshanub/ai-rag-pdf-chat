@@ -25,9 +25,9 @@ const LLMService = require('./services/llm.service');
 const DocumentPipeline = require('./pipelines/document.pipeline');
 const ChatPipeline = require('./pipelines/chat.pipeline');
 
-const DocumentModel = require('./models/document.model');
-const ChunkModel = require('./models/chunk.model');
-const ChatMessageModel = require('./models/chat-message.model');
+const DocumentRepository = require('./repositories/document.repository');
+const ChunkRepository = require('./repositories/chunk.repository');
+const ChatMessageRepository = require('./repositories/chat-message.repository');
 
 // ─── Service Instances ──────────────────────────────────────────────
 // Each service file now exports its CLASS (not an instance).
@@ -44,10 +44,10 @@ const registry = {
   rag: RAGService,
   llm: LLMService,
 
-  // Models
-  documentModel: DocumentModel,
-  chunkModel: ChunkModel,
-  chatMessageModel: ChatMessageModel,
+  // Repositories
+  documentRepository: DocumentRepository,
+  chunkRepository: ChunkRepository,
+  chatMessageRepository: ChatMessageRepository,
 
   // Pipelines
   documentPipeline: DocumentPipeline,

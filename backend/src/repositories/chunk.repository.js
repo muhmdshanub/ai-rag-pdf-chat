@@ -1,5 +1,5 @@
 /**
- * Chunk Model
+ * Chunk Repository
  *
  * Database operations for the chunks table.
  * Includes pgvector similarity search.
@@ -7,7 +7,7 @@
 
 const { pool } = require('../config/database');
 
-class ChunkModel {
+class ChunkRepository {
   async create({ documentId, chunkIndex, content, embedding }) {
     const result = await pool.query(
       `INSERT INTO chunks (document_id, chunk_index, content, embedding)
@@ -71,4 +71,4 @@ class ChunkModel {
   }
 }
 
-module.exports = new ChunkModel();
+module.exports = new ChunkRepository();

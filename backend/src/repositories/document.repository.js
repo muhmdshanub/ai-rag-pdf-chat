@@ -1,12 +1,12 @@
 /**
- * Document Model
+ * Document Repository
  *
  * Database operations for the documents table.
  */
 
 const { pool } = require('../config/database');
 
-class DocumentModel {
+class DocumentRepository {
   async create({ filename, originalName, filePath, fileSize, mimeType }) {
     const result = await pool.query(
       `INSERT INTO documents (filename, original_name, file_path, file_size, mime_type, status)
@@ -79,4 +79,4 @@ class DocumentModel {
   }
 }
 
-module.exports = new DocumentModel();
+module.exports = new DocumentRepository();

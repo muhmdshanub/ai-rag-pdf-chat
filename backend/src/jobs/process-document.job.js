@@ -10,7 +10,7 @@
  */
 
 const logger = require('../utils/logger');
-const { documentPipeline, documentModel } = require('../registry');
+const { documentPipeline, documentRepository } = require('../registry');
 
 /**
  * Register the document processing job handler
@@ -31,7 +31,7 @@ const registerProcessor = (queue) => {
       return { documentId, status: 'completed' };
     } catch (error) {
       logger.error(`❌ Document ${documentId} processing failed: ${error.message}`);
-      // await documentModel.updateStatus(documentId, 'failed', error.message);
+      // await documentRepository.updateStatus(documentId, 'failed', error.message);
       throw error; // Bull will retry based on job options
     }
   });

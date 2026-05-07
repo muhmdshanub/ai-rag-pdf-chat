@@ -47,7 +47,7 @@ class DocumentPipeline {
    * @returns {Promise<Object>} Created document record
    */
   async upload(file) {
-    const { storage, documentModel } = require('../registry');
+    const { storage, documentRepository } = require('../registry');
     const { getQueue } = require('../jobs/queue');
 
     if (file.mimetype !== 'application/pdf') {
@@ -60,7 +60,7 @@ class DocumentPipeline {
       await this.validateUpload(file.path);
 
       // 2. Create DB Record
-      const document = await documentModel.create({
+      const document = await documentRepository.create({
         filename: file.filename,
         originalName: file.originalname,
         filePath: file.path,
@@ -83,7 +83,7 @@ class DocumentPipeline {
         });
       } catch (queueError) {
         // If queueing fails, mark the document as failed
-        await documentModel.updateStatus(document.id, 'failed', 'Failed to queue for processing');
+        await documentRepository.updateStatus(document.id, 'failed', 'Failed to queue for processing');
         throw new ServiceError('Upload', 'Failed to queue document for processing', 'QUEUE_ERROR');
       }
 
@@ -106,7 +106,7 @@ class DocumentPipeline {
    * @returns {Promise<{chunks: number, pages: number}>}
    */
   async process(documentId, filePath, onProgress = () => {}) {
-    const { storage, pdfParser, cache, chunking, embedding, documentModel, chunkModel } = require('../registry');
+    const { storage, pdfParser, cache, chunking, embedding, documentRepository, chunkRepository } = require('../registry');
     const startTime = Date.now();
 
     logger.info('Document pipeline started', { documentId, filePath });
@@ -186,12 +186,12 @@ class DocumentPipeline {
         ...chunk,
         embedding: embeddings[i],
       }));
-      await chunkModel.createBatch(documentId, chunksWithEmbeddings);
+      await chunkRepository.createBatch(documentId, chunksWithEmbeddings);
       onProgress(90);
 
       // ── Step 7: Update document status ─────────────────────────────
-      await documentModel.updateChunkCount(documentId, chunks.length);
-      await documentModel.updateStatus(documentId, 'completed');
+      await documentRepository.updateChunkCount(documentId, chunks.length);
+      await documentRepository.updateStatus(documentId, 'completed');
       onProgress(100);
 
       const duration = Date.now() - startTime;
@@ -213,7 +213,7 @@ class DocumentPipeline {
       });
 
       // Mark document as failed
-      await documentModel.updateStatus(documentId, 'failed', error.message).catch((dbErr) => {
+      await documentRepository.updateStatus(documentId, 'failed', error.message).catch((dbErr) => {
         logger.error('Failed to update document status after pipeline error', { documentId, dbErr: dbErr.message });
       });
 
@@ -226,8 +226,8 @@ class DocumentPipeline {
    * @returns {Promise<Array>}
    */
   async list() {
-    const { documentModel } = require('../registry');
-    return await documentModel.findAll();
+    const { documentRepository } = require('../registry');
+    return await documentRepository.findAll();
   }
 
   /**
@@ -237,10 +237,10 @@ class DocumentPipeline {
    * @throws {ServiceError} if not found
    */
   async get(id) {
-    const { documentModel } = require('../registry');
+    const { documentRepository } = require('../registry');
     const { NotFoundError } = require('../utils/errors');
     
-    const document = await documentModel.findById(id);
+    const document = await documentRepository.findById(id);
     if (!document) {
       throw new NotFoundError(`Document ${id} not found`);
     }
@@ -254,7 +254,7 @@ class DocumentPipeline {
    * @returns {Promise<void>}
    */
   async delete(id) {
-    const { documentModel, storage } = require('../registry');
+    const { documentRepository, storage } = require('../registry');
     
     // 1. Verify document exists
     const document = await this.get(id); // Will throw NotFoundError if missing
@@ -262,7 +262,7 @@ class DocumentPipeline {
     // 2. Delete from database FIRST. 
     // If this fails, the file remains safely on disk and we can retry later.
     // The CASCADE in the DB will automatically delete associated chunks and chat messages.
-    await documentModel.delete(id);
+    await documentRepository.delete(id);
 
     // 3. Delete from storage AFTER successful DB deletion.
     try {
