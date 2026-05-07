@@ -38,10 +38,10 @@ This application strictly follows a decoupled, 5-layer architecture. Code MUST b
   - MUST have zero knowledge of the orchestration flow.
   - Examples: The `PDFParserService` only knows how to turn a Buffer into text. The `StorageService` only knows how to read/write to disk. 
 
-### Layer 5: Models (The Data Guardians)
+### Layer 5: Repositories (The Data Guardians)
 - **Responsibility:** Database queries and data-state business rules.
 - **Rules:**
-  - MUST encapsulate all SQL/ORM logic. No SQL should exist outside of `src/models/`.
+  - MUST encapsulate all SQL/ORM logic. No SQL should exist outside of `src/repositories/`.
   - MUST encapsulate business state validation (e.g., `findReadyForChat(id)` checking if a document is `status: 'completed'`).
 
 ---
