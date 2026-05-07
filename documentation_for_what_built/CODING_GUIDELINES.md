@@ -20,8 +20,8 @@ This application strictly follows a decoupled, 5-layer architecture. Code MUST b
   - MUST remain "ultra-thin".
   - MUST NOT contain multi-step business orchestration.
   - MUST NOT call the database (Models) directly for mutations or complex queries.
-  - MUST catch errors and translate them into standard HTTP/Queue responses.
   - MUST delegate all actual work to a **Pipeline**.
+  - **API Responses:** MUST use the global `ApiResponse` utility to format all successful HTTP responses to guarantee a strictly uniform JSON schema for the frontend.
 
 ### Layer 3: Pipelines (The Orchestrators)
 - **Responsibility:** Managing multi-step business workflows (The "Use Cases").

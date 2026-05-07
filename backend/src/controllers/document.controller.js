@@ -1,4 +1,5 @@
 const { documentPipeline } = require('../registry');
+const ApiResponse = require('../utils/response');
 
 /**
  * GET /api/documents
@@ -6,11 +7,7 @@ const { documentPipeline } = require('../registry');
  */
 const listDocuments = async (req, res) => {
   const documents = await documentPipeline.list();
-  
-  res.json({
-    success: true,
-    documents,
-  });
+  return ApiResponse.success(res, { documents });
 };
 
 /**
@@ -20,11 +17,7 @@ const listDocuments = async (req, res) => {
 const getDocument = async (req, res) => {
   const { id } = req.params;
   const document = await documentPipeline.get(id);
-
-  res.json({
-    success: true,
-    document,
-  });
+  return ApiResponse.success(res, { document });
 };
 
 /**
@@ -34,11 +27,7 @@ const getDocument = async (req, res) => {
 const deleteDocument = async (req, res) => {
   const { id } = req.params;
   await documentPipeline.delete(id);
-
-  res.json({
-    success: true,
-    message: 'Document deleted successfully',
-  });
+  return ApiResponse.success(res, null, 'Document deleted successfully');
 };
 
 module.exports = { listDocuments, getDocument, deleteDocument };

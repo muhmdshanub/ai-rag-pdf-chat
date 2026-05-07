@@ -5,6 +5,7 @@
  */
 
 const { documentPipeline } = require('../registry');
+const ApiResponse = require('../utils/response');
 
 /**
  * Handle document upload
@@ -25,18 +26,21 @@ exports.uploadDocument = async (req, res, next) => {
   // Pass file to the Pipeline. The Pipeline handles validation, DB, queuing, and cleanup.
   const document = await documentPipeline.upload(req.file);
 
-  return res.status(202).json({
-    success: true,
-    message: 'Document uploaded and queued for processing',
-    document: {
-      id: document.id,
-      filename: document.filename,
-      status: document.status,
-      size: document.file_size,
-      createdAt: document.created_at
-    },
-    duration: Date.now() - startTime
-  });
+  return ApiResponse.success(
+    res, 
+    {
+      document: {
+        id: document.id,
+        filename: document.filename,
+        status: document.status,
+        size: document.file_size,
+        createdAt: document.created_at
+      }
+    }, 
+    'Document uploaded and queued for processing', 
+    202, 
+    { duration: Date.now() - startTime }
+  );
 };
 
 /**
@@ -50,8 +54,7 @@ exports.getUploadProgress = async (req, res, next) => {
   // The Pipeline handles finding the document and throwing NotFoundError if missing
   const document = await documentPipeline.get(documentId);
 
-  return res.json({
-    success: true,
+  return ApiResponse.success(res, {
     document: {
       id: document.id,
       filename: document.filename,

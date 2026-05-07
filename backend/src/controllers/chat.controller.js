@@ -1,5 +1,6 @@
 const logger = require('../utils/logger');
 const { chatPipeline } = require('../registry');
+const ApiResponse = require('../utils/response');
 
 /**
  * POST /api/chat
@@ -12,8 +13,7 @@ const chat = async (req, res) => {
 
   const result = await chatPipeline.ask(documentId, message);
   
-  res.json({
-    success: true,
+  return ApiResponse.success(res, {
     answer: result.answer,
     documentId,
     retrievedChunks: result.chunks,
