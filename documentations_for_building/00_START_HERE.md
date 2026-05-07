@@ -64,8 +64,8 @@ You've received a **complete, production-ready AI application infrastructure** w
 
 ### Immediate Next (2 hours)
 ```
-1. Review the completed Phase 2a architecture (Controllers -> Pipelines -> Services)
-2. Start Phase 2b: Implement Chunking Service
+1. Review the completed Phase 2b architecture (ChunkingService)
+2. Start Phase 2c: Implement Embedding Service
 ```
 
 ### When Tests Pass ✅
@@ -109,12 +109,13 @@ Layer 8: Docker + Railway (Deployment)
 - ✅ Health checks passing
 - ✅ File storage abstraction
 
-### Phase 2a (Complete) ✅
+### Phase 2a & 2b (Complete) ✅
 - ✅ Pipeline orchestration architecture
 - ✅ PDF Parser pure service
 - ✅ Storage & Cache separate services (Redis)
 - ✅ Joi input validation middleware
-- ✅ Test suite passing 100%
+- ✅ Chunking Service (Sliding Window Algorithm)
+- ✅ Test suite passing 100% (12 tests)
 - ✅ Error handling & Security boundaries
 - ✅ Upload controller updated
 
@@ -155,8 +156,8 @@ By completing this project, you'll master:
 4. DATA_FLOW_DIAGRAMS.md
 5. PHASE_2A_ENTERPRISE_IMPLEMENTATION.md
 
-**To build Phase 2b (2 hours):**
-1. PHASE_2_DETAILED_PLAN.md (Chunking Service section)
+**To build Phase 2c (2 hours):**
+1. PHASE_2_DETAILED_PLAN.md (Embedding Service section)
 2. Copy code sections
 3. Run tests
 4. Verify everything passes
@@ -165,17 +166,17 @@ By completing this project, you'll master:
 
 ## 🚀 Next Immediate Steps
 
-### Step 1: Verify Phase 2a is Working
+### Step 1: Verify Phase 2b is Working
 ```bash
 npm test
-# Should show tests passing for PDFParserService ✅
+# Should show tests passing for PDFParserService and ChunkingService ✅
 ```
 
-### Step 2: Read Phase 2b Plan
-Open and read the chunking service section in `PHASE_2_DETAILED_PLAN.md`
+### Step 2: Read Phase 2c Plan
+Open and read the embedding service section in `PHASE_2_DETAILED_PLAN.md`
 
-### Step 3: Implement Chunking
-Start implementing the `ChunkingService` according to the new architecture.
+### Step 3: Implement Embedding
+Start implementing the `EmbeddingService` according to the architecture.
 
 ---
 
@@ -260,11 +261,12 @@ You'll know you're ready when:
 - [ ] Database has 3 tables
 - [ ] API responds to requests
 
-✅ Phase 2a:
+✅ Phase 2a & 2b:
 - [x] Splitted into Pipeline/Service architecture
 - [x] PDFParserService complete
 - [x] StorageService & CacheService complete
 - [x] Joi validation complete
+- [x] ChunkingService complete
 - [x] Tests passing
 
 ---
@@ -346,6 +348,6 @@ Everything is:
 
 **Questions?** Every file has context and examples.
 
-**Ready to build?** Let's move on to Phase 2b (Chunking)!
+**Ready to build?** Let's move on to Phase 2c (Embedding)!
 
 **Good luck! 🚀**

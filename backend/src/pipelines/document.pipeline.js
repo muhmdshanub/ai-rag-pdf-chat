@@ -82,7 +82,7 @@ class DocumentPipeline {
       onProgress(30);
 
       // ── Step 4: Chunk text ─────────────────────────────────────────
-      const chunks = chunking.chunkWithMetadata(extracted.text);
+      const chunks = await chunking.chunk(extracted.text);
       onProgress(50);
 
       // ── Step 5: Generate embeddings ────────────────────────────────
