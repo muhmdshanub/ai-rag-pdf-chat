@@ -46,6 +46,17 @@ class CacheService {
   }
 
   /**
+   * Generate a cache key from a string.
+   * Useful for caching embeddings of specific text chunks.
+   *
+   * @param {string} text - The input string
+   * @returns {string} SHA-256 hash
+   */
+  generateStringKey(text) {
+    return createHash('sha256').update(text).digest('hex');
+  }
+
+  /**
    * Get a value from cache
    *
    * @param {string} namespace - Service prefix (e.g. 'pdf', 'embedding')

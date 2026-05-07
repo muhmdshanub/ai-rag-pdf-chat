@@ -1,35 +1,62 @@
 const dotenv = require('dotenv');
+const Joi = require('joi');
 
 // Load .env file only in non-Docker environments
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
 }
 
+const isTest = process.env.NODE_ENV === 'test';
+
+// Enterprise Best Practice: Fail-Fast Configuration Validation
+const envSchema = Joi.object({
+  NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
+  PORT: Joi.number().default(5000),
+  
+  DATABASE_URL: isTest ? Joi.string().optional().default('postgres://test') : Joi.string().required().description('PostgreSQL connection string'),
+  REDIS_URL: isTest ? Joi.string().optional().default('redis://test') : Joi.string().required().description('Redis connection string'),
+  
+  GROQ_API_KEY: Joi.string().allow('').optional().description('Groq API Key for LLM'),
+  HUGGINGFACE_API_KEY: isTest ? Joi.string().optional().default('test-key') : Joi.string().required().description('HuggingFace API Key for embeddings'),
+  HUGGINGFACE_API_URL: Joi.string().uri().optional(),
+  
+  PDF_PARSER_MAX_FILE_SIZE: Joi.number().default(104857600),
+  UPLOAD_DIR: Joi.string().default('./uploads'),
+  PDF_PARSER_EXTRACTION_TIMEOUT: Joi.number().default(60000),
+  
+  CORS_ORIGINS: Joi.string().default('http://localhost:3000'),
+}).unknown(true);
+
+const { error, value: envVars } = envSchema.validate(process.env);
+
+if (error) {
+  throw new Error(`Config validation error: ${error.message}`);
+}
+
 const config = {
   // Server
-  port: parseInt(process.env.PORT, 10) || 5000,
-  nodeEnv: process.env.NODE_ENV || 'development',
-  isDev: (process.env.NODE_ENV || 'development') === 'development',
+  port: envVars.PORT,
+  nodeEnv: envVars.NODE_ENV,
+  isDev: envVars.NODE_ENV === 'development',
 
   // Database
-  databaseUrl: process.env.DATABASE_URL || 'postgresql://dev:dev123@localhost:5432/rag_chat',
+  databaseUrl: envVars.DATABASE_URL,
 
   // Redis
-  redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+  redisUrl: envVars.REDIS_URL,
 
   // AI APIs
-  groqApiKey: process.env.GROQ_API_KEY || '',
-  huggingfaceApiKey: process.env.HUGGINGFACE_API_KEY || '',
+  groqApiKey: envVars.GROQ_API_KEY,
+  huggingfaceApiKey: envVars.HUGGINGFACE_API_KEY,
+  huggingfaceApiUrl: envVars.HUGGINGFACE_API_URL,
 
   // File Upload
-  maxFileSize: parseInt(process.env.PDF_PARSER_MAX_FILE_SIZE, 10) || 100 * 1024 * 1024, // 100MB
-  uploadDir: process.env.UPLOAD_DIR || './uploads',
-  extractionTimeout: parseInt(process.env.PDF_PARSER_EXTRACTION_TIMEOUT, 10) || 60000,
+  maxFileSize: envVars.PDF_PARSER_MAX_FILE_SIZE,
+  uploadDir: envVars.UPLOAD_DIR,
+  extractionTimeout: envVars.PDF_PARSER_EXTRACTION_TIMEOUT,
 
   // CORS
-  corsOrigins: process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',')
-    : ['http://localhost:3000'],
+  corsOrigins: envVars.CORS_ORIGINS.split(','),
 };
 
 module.exports = config;
