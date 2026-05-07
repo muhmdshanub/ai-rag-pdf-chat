@@ -13,7 +13,6 @@
  */
 
 const logger = require('../utils/logger');
-const { ServiceError } = require('../utils/errors');
 
 const CACHE_NAMESPACE = 'pdf';
 const CACHE_TTL = 3600; // 1 hour
@@ -38,6 +37,62 @@ class DocumentPipeline {
     // Step 2: PDF-level check (magic bytes)
     const buffer = await storage.readFile(filePath);
     pdfParser.validatePDFBuffer(buffer);
+  }
+
+  /**
+   * Complete orchestration for uploading a new document.
+   * Validates the file, creates DB record, queues the job, and handles cleanup on failure.
+   * 
+   * @param {Object} file - Express multer file object
+   * @returns {Promise<Object>} Created document record
+   */
+  async upload(file) {
+    const { storage, documentModel } = require('../registry');
+    const { getQueue } = require('../jobs/queue');
+
+    if (file.mimetype !== 'application/pdf') {
+      await storage.deleteFile(file.filename).catch(() => {});
+      throw new ServiceError('Upload', 'Only PDF files are supported', 'INVALID_MIME_TYPE');
+    }
+
+    try {
+      // 1. Validate PDF structure
+      await this.validateUpload(file.path);
+
+      // 2. Create DB Record
+      const document = await documentModel.create({
+        filename: file.filename,
+        originalName: file.originalname,
+        filePath: file.path,
+        fileSize: file.size,
+        mimeType: file.mimetype
+      });
+
+      // 3. Queue the background processing job
+      try {
+        const uploadQueue = getQueue();
+        await uploadQueue.add('process-document', {
+          documentId: document.id,
+          filePath: file.path,
+          mimeType: file.mimetype
+        }, {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 2000 },
+          removeOnComplete: false,
+          removeOnFail: false
+        });
+      } catch (queueError) {
+        // If queueing fails, mark the document as failed
+        await documentModel.updateStatus(document.id, 'failed', 'Failed to queue for processing');
+        throw new ServiceError('Upload', 'Failed to queue document for processing', 'QUEUE_ERROR');
+      }
+
+      return document;
+    } catch (error) {
+      // Clean up orphaned file on any validation error before the DB record is made
+      await storage.deleteFile(file.filename).catch(() => {});
+      throw error;
+    }
   }
 
   /**
@@ -86,7 +141,44 @@ class DocumentPipeline {
       onProgress(50);
 
       // ── Step 5: Generate embeddings ────────────────────────────────
-      const embeddings = await embedding.getEmbeddings(chunks.map((c) => c.text));
+      const EMBEDDING_CACHE_NAMESPACE = 'embedding';
+      const embeddings = new Array(chunks.length);
+      const textsToEmbed = [];
+      const missingIndices = []; // Parallel array for missing indices
+
+      // Check cache for each chunk
+      for (let i = 0; i < chunks.length; i++) {
+        const text = chunks[i].text;
+        const key = cache.generateStringKey(text);
+        const cached = await cache.get(EMBEDDING_CACHE_NAMESPACE, key);
+        
+        if (cached) {
+          embeddings[i] = cached;
+        } else {
+          textsToEmbed.push(text);
+          missingIndices.push(i);
+        }
+      }
+
+      // Generate missing embeddings and cache them
+      if (textsToEmbed.length > 0) {
+        logger.info(`Embedding cache miss for ${textsToEmbed.length}/${chunks.length} chunks. Calling API...`);
+        const newEmbeddings = await embedding.getEmbeddings(textsToEmbed);
+        
+        for (let j = 0; j < textsToEmbed.length; j++) {
+          const text = textsToEmbed[j];
+          const vector = newEmbeddings[j];
+          const originalIndex = missingIndices[j];
+          
+          embeddings[originalIndex] = vector;
+          
+          // Save to cache (24h TTL)
+          const key = cache.generateStringKey(text);
+          await cache.set(EMBEDDING_CACHE_NAMESPACE, key, vector, 86400);
+        }
+      } else {
+        logger.info(`Embedding cache hit for all ${chunks.length} chunks!`);
+      }
       onProgress(70);
 
       // ── Step 6: Store chunks + embeddings ──────────────────────────
@@ -127,6 +219,65 @@ class DocumentPipeline {
 
       throw error;
     }
+  }
+
+  /**
+   * List all documents
+   * @returns {Promise<Array>}
+   */
+  async list() {
+    const { documentModel } = require('../registry');
+    return await documentModel.findAll();
+  }
+
+  /**
+   * Get a specific document
+   * @param {number|string} id 
+   * @returns {Promise<Object>}
+   * @throws {ServiceError} if not found
+   */
+  async get(id) {
+    const { documentModel } = require('../registry');
+    const { NotFoundError } = require('../utils/errors');
+    
+    const document = await documentModel.findById(id);
+    if (!document) {
+      throw new NotFoundError(`Document ${id} not found`);
+    }
+    
+    return document;
+  }
+
+  /**
+   * Safely delete a document and its associated files
+   * @param {number|string} id 
+   * @returns {Promise<void>}
+   */
+  async delete(id) {
+    const { documentModel, storage } = require('../registry');
+    
+    // 1. Verify document exists
+    const document = await this.get(id); // Will throw NotFoundError if missing
+
+    // 2. Delete from database FIRST. 
+    // If this fails, the file remains safely on disk and we can retry later.
+    // The CASCADE in the DB will automatically delete associated chunks and chat messages.
+    await documentModel.delete(id);
+
+    // 3. Delete from storage AFTER successful DB deletion.
+    try {
+      await storage.deleteFile(document.filename);
+    } catch (storageError) {
+      // If file deletion fails but DB deletion succeeded, we log it.
+      // The DB is clean, but there is an orphan file on disk. 
+      // (An enterprise system would queue an "orphan cleanup" job here)
+      logger.warn(`Orphaned file left on disk after document deletion`, { 
+        filename: document.filename, 
+        error: storageError.message 
+      });
+    }
+
+    logger.info(`🗑️ Document ${id} completely deleted`);
   }
 }
 
