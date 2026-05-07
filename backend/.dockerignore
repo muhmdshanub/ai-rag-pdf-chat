@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log*
+.env
+.env.*
+!.env.example
+uploads/*
+!uploads/.gitkeep
+.git
+.gitignore
+README.md
+tests
+*.md

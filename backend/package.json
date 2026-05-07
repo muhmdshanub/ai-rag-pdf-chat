@@ -1,0 +1,37 @@
+{
+  "name": "ai-rag-pdf-chat-backend",
+  "version": "1.0.0",
+  "description": "Backend API for AI RAG PDF Chat application",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon --watch src src/server.js",
+    "db:init": "node src/db/init.js",
+    "init-db": "node src/db/init.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "rag",
+    "pdf",
+    "chat",
+    "ai",
+    "embeddings"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.16.0",
+    "bull": "^4.16.5",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "multer": "^2.1.1",
+    "pdf-parse": "^1.1.1",
+    "pg": "^8.20.0",
+    "redis": "^5.12.1",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
