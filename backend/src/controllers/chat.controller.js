@@ -10,28 +10,16 @@ const chat = async (req, res) => {
 
   logger.info(`💬 Chat request for document ${documentId}: "${message.substring(0, 50)}..."`);
 
-  try {
-    const result = await chatPipeline.ask(documentId, message);
-    
-    res.json({
-      success: true,
-      answer: result.answer,
-      documentId,
-      retrievedChunks: result.chunks,
-      tokensUsed: result.tokensUsed,
-      modelUsed: result.modelUsed
-    });
-  } catch (error) {
-    logger.error('Chat request failed', { documentId, error: error.message });
-    
-    const statusCode = error.name === 'NotFoundError' || error.name === 'BadRequestError' ? 400 : 500;
-    
-    res.status(statusCode).json({
-      success: false,
-      error: error.message,
-      code: error.code || 'CHAT_ERROR'
-    });
-  }
+  const result = await chatPipeline.ask(documentId, message);
+  
+  res.json({
+    success: true,
+    answer: result.answer,
+    documentId,
+    retrievedChunks: result.chunks,
+    tokensUsed: result.tokensUsed,
+    modelUsed: result.modelUsed
+  });
 };
 
 module.exports = { chat };

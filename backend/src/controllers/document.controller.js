@@ -1,13 +1,12 @@
-const logger = require('../utils/logger');
-const { documentModel, storage } = require('../registry');
-const { NotFoundError } = require('../utils/errors');
+const { documentPipeline } = require('../registry');
 
 /**
  * GET /api/documents
  * Returns list of all uploaded documents
  */
 const listDocuments = async (req, res) => {
-  const documents = await documentModel.findAll();
+  const documents = await documentPipeline.list();
+  
   res.json({
     success: true,
     documents,
@@ -20,11 +19,7 @@ const listDocuments = async (req, res) => {
  */
 const getDocument = async (req, res) => {
   const { id } = req.params;
-
-  const document = await documentModel.findById(id);
-  if (!document) {
-    throw new NotFoundError(`Document ${id} not found`);
-  }
+  const document = await documentPipeline.get(id);
 
   res.json({
     success: true,
@@ -38,19 +33,7 @@ const getDocument = async (req, res) => {
  */
 const deleteDocument = async (req, res) => {
   const { id } = req.params;
-
-  const document = await documentModel.findById(id);
-  if (!document) {
-    throw new NotFoundError(`Document ${id} not found`);
-  }
-
-  // Delete file from local storage
-  await storage.deleteFile(document.filename);
-
-  // Delete database record (CASCADE removes chunks and messages)
-  await documentModel.delete(id);
-
-  logger.info(`🗑️ Document ${id} deleted`);
+  await documentPipeline.delete(id);
 
   res.json({
     success: true,
