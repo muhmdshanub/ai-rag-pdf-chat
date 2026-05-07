@@ -64,8 +64,8 @@ You've received a **complete, production-ready AI application infrastructure** w
 
 ### Immediate Next (2 hours)
 ```
-1. Review the completed Phase 2b architecture (ChunkingService)
-2. Start Phase 2c: Implement Embedding Service
+1. Review the completed Phase 2c architecture (EmbeddingService)
+2. Start Phase 2d: Implement RAG Service & Retrieval
 ```
 
 ### When Tests Pass ✅
@@ -109,13 +109,15 @@ Layer 8: Docker + Railway (Deployment)
 - ✅ Health checks passing
 - ✅ File storage abstraction
 
-### Phase 2a & 2b (Complete) ✅
+### Phase 2a, 2b, & 2c (Complete) ✅
 - ✅ Pipeline orchestration architecture
 - ✅ PDF Parser pure service
 - ✅ Storage & Cache separate services (Redis)
 - ✅ Joi input validation middleware
 - ✅ Chunking Service (Sliding Window Algorithm)
-- ✅ Test suite passing 100% (12 tests)
+- ✅ Embedding Service (HuggingFace API + Resiliency)
+- ✅ Pipeline Cache Orchestration
+- ✅ Test suite passing 100% (22 tests)
 - ✅ Error handling & Security boundaries
 - ✅ Upload controller updated
 
@@ -156,8 +158,8 @@ By completing this project, you'll master:
 4. DATA_FLOW_DIAGRAMS.md
 5. PHASE_2A_ENTERPRISE_IMPLEMENTATION.md
 
-**To build Phase 2c (2 hours):**
-1. PHASE_2_DETAILED_PLAN.md (Embedding Service section)
+**To build Phase 2d (2 hours):**
+1. PHASE_2_DETAILED_PLAN.md (RAG / Vector Search section)
 2. Copy code sections
 3. Run tests
 4. Verify everything passes
@@ -166,17 +168,17 @@ By completing this project, you'll master:
 
 ## 🚀 Next Immediate Steps
 
-### Step 1: Verify Phase 2b is Working
+### Step 1: Verify Phase 2c is Working
 ```bash
 npm test
-# Should show tests passing for PDFParserService and ChunkingService ✅
+# Should show tests passing for PDFParser, Chunking, and Embedding Services ✅
 ```
 
-### Step 2: Read Phase 2c Plan
-Open and read the embedding service section in `PHASE_2_DETAILED_PLAN.md`
+### Step 2: Read Phase 2d Plan
+Open and read the vector search and RAG section in `PHASE_2_DETAILED_PLAN.md`
 
-### Step 3: Implement Embedding
-Start implementing the `EmbeddingService` according to the architecture.
+### Step 3: Implement RAG Service
+Start implementing the database similarity search and RAG retrieval.
 
 ---
 
@@ -261,12 +263,13 @@ You'll know you're ready when:
 - [ ] Database has 3 tables
 - [ ] API responds to requests
 
-✅ Phase 2a & 2b:
+✅ Phase 2a, 2b & 2c:
 - [x] Splitted into Pipeline/Service architecture
 - [x] PDFParserService complete
 - [x] StorageService & CacheService complete
 - [x] Joi validation complete
 - [x] ChunkingService complete
+- [x] EmbeddingService complete (with pure-service caching setup)
 - [x] Tests passing
 
 ---
@@ -348,6 +351,6 @@ Everything is:
 
 **Questions?** Every file has context and examples.
 
-**Ready to build?** Let's move on to Phase 2c (Embedding)!
+**Ready to build?** Let's move on to Phase 2d (RAG Service)!
 
 **Good luck! 🚀**
