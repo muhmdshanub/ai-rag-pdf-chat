@@ -5,14 +5,15 @@
  */
 
 const { pool } = require('../config/database');
+const { DOCUMENT_STATUS } = require('../utils/constants');
 
 class DocumentRepository {
   async create({ filename, originalName, filePath, fileSize, mimeType }) {
     const result = await pool.query(
       `INSERT INTO documents (filename, original_name, file_path, file_size, mime_type, status)
-       VALUES ($1, $2, $3, $4, $5, 'processing')
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [filename, originalName, filePath, fileSize, mimeType]
+      [filename, originalName, filePath, fileSize, mimeType, DOCUMENT_STATUS.PROCESSING]
     );
     return result.rows[0];
   }
@@ -49,7 +50,7 @@ class DocumentRepository {
       const { NotFoundError } = require('../utils/errors');
       throw new NotFoundError(`Document ${id} not found`);
     }
-    if (document.status !== 'completed') {
+    if (document.status !== DOCUMENT_STATUS.COMPLETED) {
       const { BadRequestError } = require('../utils/errors');
       throw new BadRequestError(`Document ${id} is not ready (status: ${document.status})`);
     }

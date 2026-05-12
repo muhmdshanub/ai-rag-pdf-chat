@@ -11,11 +11,17 @@ const AI_ROLES = {
 const DOCUMENT_STATUS = {
   PENDING: 'pending',
   PROCESSING: 'processing',
-  READY: 'ready',
+  COMPLETED: 'completed',
   FAILED: 'failed'
+};
+
+const CACHE_NAMESPACES = {
+  PDF_EXTRACTION: 'pdf',
+  EMBEDDINGS: 'embedding'
 };
 
 module.exports = {
   AI_ROLES,
-  DOCUMENT_STATUS
+  DOCUMENT_STATUS,
+  CACHE_NAMESPACES
 };

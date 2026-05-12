@@ -13,8 +13,8 @@
  */
 
 const logger = require('../utils/logger');
+const { DOCUMENT_STATUS, CACHE_NAMESPACES } = require('../utils/constants');
 
-const CACHE_NAMESPACE = 'pdf';
 const CACHE_TTL = 3600; // 1 hour
 
 class DocumentPipeline {
@@ -49,6 +49,7 @@ class DocumentPipeline {
   async upload(file) {
     const { storage, documentRepository } = require('../registry');
     const { getQueue } = require('../jobs/queue');
+    const { ServiceError } = require('../utils/errors');
 
     if (file.mimetype !== 'application/pdf') {
       await storage.deleteFile(file.filename).catch(() => {});
@@ -83,7 +84,7 @@ class DocumentPipeline {
         });
       } catch (queueError) {
         // If queueing fails, mark the document as failed
-        await documentRepository.updateStatus(document.id, 'failed', 'Failed to queue for processing');
+        await documentRepository.updateStatus(document.id, DOCUMENT_STATUS.FAILED, 'Failed to queue for processing');
         throw new ServiceError('Upload', 'Failed to queue document for processing', 'QUEUE_ERROR');
       }
 
@@ -122,7 +123,7 @@ class DocumentPipeline {
       let extracted = null;
 
       if (cacheKey) {
-        extracted = await cache.get(CACHE_NAMESPACE, cacheKey);
+        extracted = await cache.get(CACHE_NAMESPACES.PDF_EXTRACTION, cacheKey);
       }
 
       if (!extracted) {
@@ -131,7 +132,7 @@ class DocumentPipeline {
 
         // Cache the extraction result for future re-processing
         if (cacheKey) {
-          await cache.set(CACHE_NAMESPACE, cacheKey, extracted, CACHE_TTL);
+          await cache.set(CACHE_NAMESPACES.PDF_EXTRACTION, cacheKey, extracted, CACHE_TTL);
         }
       }
       onProgress(30);
@@ -141,7 +142,6 @@ class DocumentPipeline {
       onProgress(50);
 
       // ── Step 5: Generate embeddings ────────────────────────────────
-      const EMBEDDING_CACHE_NAMESPACE = 'embedding';
       const embeddings = new Array(chunks.length);
       const textsToEmbed = [];
       const missingIndices = []; // Parallel array for missing indices
@@ -150,7 +150,7 @@ class DocumentPipeline {
       for (let i = 0; i < chunks.length; i++) {
         const text = chunks[i].text;
         const key = cache.generateStringKey(text);
-        const cached = await cache.get(EMBEDDING_CACHE_NAMESPACE, key);
+        const cached = await cache.get(CACHE_NAMESPACES.EMBEDDINGS, key);
         
         if (cached) {
           embeddings[i] = cached;
@@ -174,7 +174,7 @@ class DocumentPipeline {
           
           // Save to cache (24h TTL)
           const key = cache.generateStringKey(text);
-          await cache.set(EMBEDDING_CACHE_NAMESPACE, key, vector, 86400);
+          await cache.set(CACHE_NAMESPACES.EMBEDDINGS, key, vector, 86400);
         }
       } else {
         logger.info(`Embedding cache hit for all ${chunks.length} chunks!`);
@@ -191,7 +191,7 @@ class DocumentPipeline {
 
       // ── Step 7: Update document status ─────────────────────────────
       await documentRepository.updateChunkCount(documentId, chunks.length);
-      await documentRepository.updateStatus(documentId, 'completed');
+      await documentRepository.updateStatus(documentId, DOCUMENT_STATUS.COMPLETED);
       onProgress(100);
 
       const duration = Date.now() - startTime;
@@ -213,7 +213,7 @@ class DocumentPipeline {
       });
 
       // Mark document as failed
-      await documentRepository.updateStatus(documentId, 'failed', error.message).catch((dbErr) => {
+      await documentRepository.updateStatus(documentId, DOCUMENT_STATUS.FAILED, error.message).catch((dbErr) => {
         logger.error('Failed to update document status after pipeline error', { documentId, dbErr: dbErr.message });
       });
 

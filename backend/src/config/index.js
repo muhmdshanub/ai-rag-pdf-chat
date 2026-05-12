@@ -76,6 +76,15 @@ const config = {
     recallK: envVars.RAG_RECALL_K,
     minSimilarity: envVars.RAG_MIN_SIMILARITY,
     maxContextChars: envVars.RAG_MAX_CONTEXT_CHARS,
+    gapThreshold: 0.15,
+    defaultSystemPrompt: `You are a helpful AI assistant answering questions based strictly on the provided document context.
+
+Guidelines:
+1. Use ONLY information from the provided context.
+2. If the context doesn't contain the answer, say "The provided context doesn't contain information about this."
+3. Cite which chunk numbers you are using.
+4. Be clear and concise.
+5. Do not make up information or use outside knowledge.`
   },
 
   // File Upload

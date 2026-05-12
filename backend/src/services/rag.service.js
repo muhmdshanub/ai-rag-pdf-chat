@@ -11,22 +11,17 @@
  */
 
 const logger = require('../utils/logger');
+const config = require('../config');
 
 class RAGService {
   constructor() {
     this.defaults = {
-      minSimilarity: 0.3,               // Minimum similarity threshold (0-1)
-      maxContextLength: 3000            // Maximum context chars before truncation
+      minSimilarity: config.rag.minSimilarity,
+      maxContextLength: config.rag.maxContextChars,
+      gapThreshold: config.rag.gapThreshold
     };
 
-    this.systemPrompt = `You are a helpful AI assistant answering questions based strictly on the provided document context.
-
-Guidelines:
-1. Use ONLY information from the provided context.
-2. If the context doesn't contain the answer, say "The provided context doesn't contain information about this."
-3. Cite which chunk numbers you are using.
-4. Be clear and concise.
-5. Do not make up information or use outside knowledge.`;
+    this.systemPrompt = config.rag.defaultSystemPrompt;
   }
 
   /**
@@ -61,7 +56,7 @@ Guidelines:
   refineContext(chunks, options = {}) {
     const minSimilarity = options.minSimilarity || this.defaults.minSimilarity;
     const maxChars = options.maxContextLength || this.defaults.maxContextLength;
-    const gapThreshold = 0.15; // Stop if there is a 15% drop in similarity
+    const gapThreshold = options.gapThreshold || this.defaults.gapThreshold;
 
     if (!chunks || chunks.length === 0) return [];
 

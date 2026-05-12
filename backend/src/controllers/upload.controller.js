@@ -6,6 +6,7 @@
 
 const { documentPipeline } = require('../registry');
 const ApiResponse = require('../utils/response');
+const { DOCUMENT_STATUS } = require('../utils/constants');
 
 /**
  * Handle document upload
@@ -60,7 +61,7 @@ exports.getUploadProgress = async (req, res, next) => {
       filename: document.filename,
       status: document.status,
       totalChunks: document.total_chunks,
-      progress: document.status === 'completed' ? 100 : (document.status === 'failed' ? 0 : 50)
+      progress: document.status === DOCUMENT_STATUS.COMPLETED ? 100 : (document.status === DOCUMENT_STATUS.FAILED ? 0 : 50)
     }
   });
 };

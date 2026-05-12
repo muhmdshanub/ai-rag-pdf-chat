@@ -11,6 +11,7 @@
  */
 
 const logger = require('../utils/logger');
+const { CACHE_NAMESPACES } = require('../utils/constants');
 
 class ChatPipeline {
   /**
@@ -32,14 +33,14 @@ class ChatPipeline {
 
     // Step 2: Generate embedding for the user's query
     const cacheKey = cache.generateStringKey(`query_embed_${message}`);
-    let queryEmbedding = await cache.get('embedding', cacheKey);
+    let queryEmbedding = await cache.get(CACHE_NAMESPACES.EMBEDDINGS, cacheKey);
     let embeddingCached = true;
 
     if (!queryEmbedding) {
       const newEmbeddings = await embedding.getEmbeddings([message]);
       queryEmbedding = newEmbeddings[0];
       embeddingCached = false;
-      await cache.set('embedding', cacheKey, queryEmbedding, 86400); // Cache for 24 hours
+      await cache.set(CACHE_NAMESPACES.EMBEDDINGS, cacheKey, queryEmbedding, 86400); // Cache for 24 hours
     }
 
     // Step 3: Wide-Net Retrieval
