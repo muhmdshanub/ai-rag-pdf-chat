@@ -47,6 +47,69 @@ Guidelines:
   }
 
   /**
+   * Refine retrieved chunks using dynamic thresholding and token budgeting.
+   * 
+   * This is the "Perfect RAG" logic:
+   * 1. Remove noise (hard threshold)
+   * 2. Detect relevance gaps (the "elbow" logic)
+   * 3. Pack context up to a character/token budget
+   * 
+   * @param {Array} chunks - Raw chunks from the database
+   * @param {Object} options - Custom thresholds/budgets
+   * @returns {Array} Refined high-quality chunks
+   */
+  refineContext(chunks, options = {}) {
+    const minSimilarity = options.minSimilarity || this.defaults.minSimilarity;
+    const maxChars = options.maxContextLength || this.defaults.maxContextLength;
+    const gapThreshold = 0.15; // Stop if there is a 15% drop in similarity
+
+    if (!chunks || chunks.length === 0) return [];
+
+    const refined = [];
+    let currentChars = 0;
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const similarity = parseFloat(chunk.similarity);
+
+      // 1. Hard Threshold Check
+      if (similarity < minSimilarity) {
+        logger.debug(`Stopping at chunk ${i}: Similarity ${similarity} below threshold ${minSimilarity}`);
+        break;
+      }
+
+      // 2. Gap Detection (The "Elbow" Logic)
+      // If there is a massive drop between this chunk and the previous one, stop.
+      if (i > 0) {
+        const prevSimilarity = parseFloat(chunks[i - 1].similarity);
+        if (prevSimilarity - similarity > gapThreshold) {
+          logger.info(`Detected relevance gap at chunk ${i}: ${prevSimilarity} -> ${similarity}. Cutting off.`);
+          break;
+        }
+      }
+
+      // 3. Token/Char Budgeting
+      // Estimate if adding this chunk exceeds our safety budget
+      const estimate = chunk.content.length + 100; // content + formatting overhead
+      if (currentChars + estimate > maxChars) {
+        logger.warn(`Context budget reached (${currentChars} chars). Skipping remaining chunks.`);
+        break;
+      }
+
+      refined.push(chunk);
+      currentChars += estimate;
+    }
+
+    logger.info('Context refined', {
+      original: chunks.length,
+      refined: refined.length,
+      totalChars: currentChars
+    });
+
+    return refined;
+  }
+
+  /**
    * Build formatted context string from retrieved chunks
    * 
    * Formats chunks with:

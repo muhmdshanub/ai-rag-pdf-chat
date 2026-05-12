@@ -1,6 +1,42 @@
 const ragService = require('./rag.service');
 
 describe('RAGService', () => {
+  describe('refineContext()', () => {
+    it('should filter by hard threshold', () => {
+      const chunks = [
+        { similarity: '0.9', content: 'Good' },
+        { similarity: '0.1', content: 'Bad' }
+      ];
+      const refined = ragService.refineContext(chunks, { minSimilarity: 0.4 });
+      expect(refined).toHaveLength(1);
+      expect(refined[0].content).toBe('Good');
+    });
+
+    it('should stop at the "elbow" (relevance gap)', () => {
+      const chunks = [
+        { similarity: '0.95', content: 'A' },
+        { similarity: '0.92', content: 'B' },
+        { similarity: '0.60', content: 'C' }, // Gap > 0.15
+        { similarity: '0.58', content: 'D' }
+      ];
+      const refined = ragService.refineContext(chunks, { minSimilarity: 0.3 });
+      expect(refined).toHaveLength(2);
+      expect(refined[0].content).toBe('A');
+      expect(refined[1].content).toBe('B');
+    });
+
+    it('should respect the character budget', () => {
+      const chunks = [
+        { similarity: '0.9', content: 'A'.repeat(500) },
+        { similarity: '0.8', content: 'B'.repeat(500) }
+      ];
+      // Limit to 600 chars (500 + overhead)
+      const refined = ragService.refineContext(chunks, { maxContextLength: 600 });
+      expect(refined).toHaveLength(1);
+      expect(refined[0].content).toBe('A'.repeat(500));
+    });
+  });
+
   describe('filterChunks()', () => {
     it('should filter out chunks below the minimum similarity threshold', () => {
       const chunks = [

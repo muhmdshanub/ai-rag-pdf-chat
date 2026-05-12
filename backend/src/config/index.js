@@ -25,6 +25,11 @@ const envSchema = Joi.object({
   PDF_PARSER_EXTRACTION_TIMEOUT: Joi.number().default(60000),
   
   CORS_ORIGINS: Joi.string().default('http://localhost:3000'),
+
+  // RAG Configuration
+  RAG_RECALL_K: Joi.number().integer().min(1).max(100).default(30),
+  RAG_MIN_SIMILARITY: Joi.number().min(0).max(1).default(0.4),
+  RAG_MAX_CONTEXT_CHARS: Joi.number().integer().min(500).max(50000).default(12000), // ~3000-4000 tokens
 }).unknown(true);
 
 const { error, value: envVars } = envSchema.validate(process.env);
@@ -49,6 +54,13 @@ const config = {
   groqApiKey: envVars.GROQ_API_KEY,
   huggingfaceApiKey: envVars.HUGGINGFACE_API_KEY,
   huggingfaceApiUrl: envVars.HUGGINGFACE_API_URL,
+
+  // RAG Settings
+  rag: {
+    recallK: envVars.RAG_RECALL_K,
+    minSimilarity: envVars.RAG_MIN_SIMILARITY,
+    maxContextChars: envVars.RAG_MAX_CONTEXT_CHARS,
+  },
 
   // File Upload
   maxFileSize: envVars.PDF_PARSER_MAX_FILE_SIZE,
