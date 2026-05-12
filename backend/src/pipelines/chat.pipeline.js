@@ -42,13 +42,16 @@ class ChatPipeline {
       await cache.set('embedding', cacheKey, queryEmbedding, 86400); // Cache for 24 hours
     }
 
-    // Step 3: Retrieve relevant chunks via similarity search
-    const similarChunks = await chunkRepository.findSimilar(queryEmbedding, documentId, 5);
+    // Step 3: Retrieve a larger pool of chunks via similarity search (e.g., 15)
+    // We fetch a larger pool so that if there are 8 highly relevant chunks, we don't miss them.
+    const similarChunks = await chunkRepository.findSimilar(queryEmbedding, documentId, 15);
 
-    // Step 4: Filter chunks below similarity threshold
+    // Step 4: Filter chunks dynamically based on the similarity threshold (e.g., must be > 0.3)
+    // This removes irrelevant chunks. If only 2 chunks match, it keeps 2. If 10 match, it keeps 10.
     const relevantChunks = rag.filterChunks(similarChunks);
 
     // Step 5: Build context from retrieved chunks
+    // This dynamically truncates the final string if it exceeds the maximum context length (e.g., 3000 chars)
     const context = rag.buildContext(relevantChunks);
 
     // Step 6: Build prompt and call LLM
