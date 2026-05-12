@@ -28,4 +28,13 @@ Because the RAG logic was separated from the database orchestration, the core in
 ## 4. Cost & Performance Optimizations ⚡
 *   **Caching Layers:** The system employs Redis/in-memory caching across the entire pipeline. The same question asked twice won't trigger an expensive re-embedding API call.
 *   **Fail-Fast Validations:** Invalid inputs are rejected at the Controller layer via Joi schemas before wasting CPU cycles.
-*   **Robust Background Jobs:** Heavy PDF processing is offloaded to Redis-backed queues (BullMQ), preventing HTTP timeouts and ensuring the server stays responsive.
+## 5. The "Safety Buffer" Strategy (RecallK vs. Context Budgeting) 🛡️
+A critical design decision in our RAG engine is the intentional disconnect between **Information Retrieval** and **Context Packing**:
+*   **Wide-Net Retrieval:** We fetch a "Wide-Net" of candidates (default: 30) from the database to ensure high recall. 
+*   **Context Budgeting:** We only pack the absolute best matches into the LLM prompt until we hit a character budget (default: 12,000 characters). 
+
+**Why this decision?**
+1.  **Recall Assurance:** If 15 chunks are highly relevant, we catch all of them.
+2.  **Noise Prevention:** If only 2 chunks are relevant, we stop there and don't fill the prompt with "garbage" matches just to hit a quota.
+3.  **Efficiency:** We prioritize quality over quantity, protecting the LLM from "Information Overload" (the Lost-in-the-Middle phenomenon) while keeping token costs predictable.
+
