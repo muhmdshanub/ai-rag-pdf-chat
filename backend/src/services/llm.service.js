@@ -1,5 +1,7 @@
 const logger = require('../utils/logger');
 const groqClient = require('../utils/groq.client');
+const config = require('../config');
+const { AI_ROLES } = require('../utils/constants');
 
 /**
  * LLM Service
@@ -9,11 +11,8 @@ const groqClient = require('../utils/groq.client');
  */
 class LLMService {
   constructor() {
-    this.models = {
-      'llama-3-70b-8192': { name: 'Llama 3 70B', costPer1k: 0.0007 },
-      'mixtral-8x7b-32768': { name: 'Mixtral 8x7B', costPer1k: 0.0005 }
-    };
-    this.defaultModel = 'llama-3-70b-8192';
+    this.models = config.llm.models;
+    this.defaultModel = config.llm.defaultModel;
   }
 
   /**
@@ -26,18 +25,18 @@ class LLMService {
    */
   async generateAnswer(systemPrompt, userPrompt, options = {}) {
     const model = options.model || this.defaultModel;
-    const temperature = options.temperature ?? 0.1; // Low temperature for factual RAG
+    const temperature = options.temperature ?? config.llm.defaultTemperature;
 
     logger.info(`LLM Request: model=${model}, temp=${temperature}`);
 
     const payload = {
       model,
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
+        { role: AI_ROLES.SYSTEM, content: systemPrompt },
+        { role: AI_ROLES.USER, content: userPrompt }
       ],
       temperature,
-      max_tokens: options.maxTokens || 1024
+      max_tokens: options.maxTokens || config.llm.maxTokens
     };
 
     const startTime = Date.now();

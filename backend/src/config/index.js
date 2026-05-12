@@ -26,6 +26,11 @@ const envSchema = Joi.object({
   
   CORS_ORIGINS: Joi.string().default('http://localhost:3000'),
 
+  // LLM Configuration
+  LLM_DEFAULT_MODEL: Joi.string().default('llama-3-70b-8192'),
+  LLM_DEFAULT_TEMPERATURE: Joi.number().min(0).max(2).default(0.1),
+  LLM_MAX_TOKENS: Joi.number().integer().min(1).max(4096).default(1024),
+
   // RAG Configuration
   RAG_RECALL_K: Joi.number().integer().min(1).max(100).default(30),
   RAG_MIN_SIMILARITY: Joi.number().min(0).max(1).default(0.4),
@@ -54,6 +59,17 @@ const config = {
   groqApiKey: envVars.GROQ_API_KEY,
   huggingfaceApiKey: envVars.HUGGINGFACE_API_KEY,
   huggingfaceApiUrl: envVars.HUGGINGFACE_API_URL,
+
+  // LLM Settings
+  llm: {
+    defaultModel: envVars.LLM_DEFAULT_MODEL,
+    defaultTemperature: envVars.LLM_DEFAULT_TEMPERATURE,
+    maxTokens: envVars.LLM_MAX_TOKENS,
+    models: {
+      'llama-3-70b-8192': { name: 'Llama 3 70B', costPer1k: 0.0007 },
+      'mixtral-8x7b-32768': { name: 'Mixtral 8x7B', costPer1k: 0.0005 }
+    }
+  },
 
   // RAG Settings
   rag: {
