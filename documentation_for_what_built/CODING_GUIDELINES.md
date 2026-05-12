@@ -79,6 +79,16 @@ This application strictly follows a decoupled, 5-layer architecture. Code MUST b
   2. Use Pipelines for orchestration.
   3. If a Pipeline needs multiple dependencies, require the registry *inside the method block* (dynamically), not at the top of the file.
 
+### 9. Environment Configuration (No Hardcoding)
+- **Rule:** Never hardcode environment-specific values, API settings, or default business logic parameters (like LLM temperature or chunk sizes) inside a class or method.
+- **Why:** Prevents code changes for simple configuration tweaks and ensures the app works correctly across dev, test, and production.
+- **How:** Always define these in `src/config/index.js` (validated by Joi) and consume them via the global `config` object.
+
+### 10. Centralized Constants (No Magic Strings)
+- **Rule:** Avoid "Magic Strings"—hardcoded string values that have specific meanings (e.g., 'system', 'ready', 'processing').
+- **Why:** Prevents typos that lead to silent bugs and makes bulk updates (like renaming a status) trivial.
+- **How:** Define reusable strings in `src/utils/constants.js` as enums (e.g., `AI_ROLES.SYSTEM`) and import them where needed.
+
 ### 8. Defensive Programming
 - **Rule:** Never trust your inputs, even deep within the application.
 - **How:** Even if Joi validates HTTP input, the `PDFParserService` must STILL check `if (!Buffer.isBuffer(buffer))` before parsing. Validate at the boundaries (HTTP), and guard at the core (Services).
