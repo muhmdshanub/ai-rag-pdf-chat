@@ -17,11 +17,15 @@ CREATE TABLE IF NOT EXISTS documents (
   mime_type VARCHAR(100) NOT NULL,
   status VARCHAR(50) DEFAULT 'processing'
     CHECK (status IN ('processing', 'completed', 'failed')),
+  progress INTEGER DEFAULT 0,
   total_chunks INTEGER DEFAULT 0,
   error_message TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Idempotent column check for existing databases
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0;
 
 -- ==================== CHUNKS ====================
 CREATE TABLE IF NOT EXISTS chunks (

@@ -20,6 +20,9 @@ const chatRequestSchema = Joi.object({
     'string.max': 'message cannot exceed 2000 characters',
     'any.required': 'message is required',
   }),
+  model: Joi.string().trim().optional().messages({
+    'string.base': 'model must be a string'
+  })
 });
 
 module.exports = {

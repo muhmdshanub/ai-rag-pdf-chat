@@ -20,7 +20,7 @@ class DocumentRepository {
 
   async findAll() {
     const result = await pool.query(
-      `SELECT id, filename, original_name, file_size, mime_type, status, total_chunks, created_at
+      `SELECT id, filename, original_name, file_size, mime_type, status, progress, total_chunks, created_at
        FROM documents
        ORDER BY created_at DESC`
     );
@@ -72,6 +72,13 @@ class DocumentRepository {
     await pool.query(
       `UPDATE documents SET total_chunks = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
       [totalChunks, id]
+    );
+  }
+
+  async updateProgress(id, progress) {
+    await pool.query(
+      `UPDATE documents SET progress = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+      [progress, id]
     );
   }
 

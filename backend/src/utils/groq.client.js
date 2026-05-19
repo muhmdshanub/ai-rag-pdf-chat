@@ -33,6 +33,19 @@ class GroqClient {
   }
 
   /**
+   * Call Chat Completion API with streaming response
+   * 
+   * @param {Object} payload - OpenAI-compatible chat completion payload
+   * @returns {Promise<Stream>} Stream object yielding API chunks
+   */
+  async chatCompletionStream(payload) {
+    const streamPayload = { ...payload, stream: true };
+    return this._requestWithRetry(() => this.client.post('/chat/completions', streamPayload, {
+      responseType: 'stream'
+    }));
+  }
+
+  /**
    * Internal request wrapper with exponential backoff retries
    * 
    * @private

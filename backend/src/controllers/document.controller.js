@@ -1,4 +1,4 @@
-const { documentPipeline } = require('../registry');
+const { documentPipeline, chatMessageRepository } = require('../registry');
 const ApiResponse = require('../utils/response');
 
 /**
@@ -30,4 +30,18 @@ const deleteDocument = async (req, res) => {
   return ApiResponse.success(res, null, 'Document deleted successfully');
 };
 
-module.exports = { listDocuments, getDocument, deleteDocument };
+/**
+ * GET /api/documents/:id/chat
+ * Returns past chat history messages for a specific document
+ */
+const getChatHistory = async (req, res) => {
+  const { id } = req.params;
+  
+  // Ensure the document exists first (will throw NotFoundError if not found)
+  const document = await documentPipeline.get(id);
+  
+  const history = await chatMessageRepository.findByDocumentId(document.id);
+  return ApiResponse.success(res, { history });
+};
+
+module.exports = { listDocuments, getDocument, deleteDocument, getChatHistory };

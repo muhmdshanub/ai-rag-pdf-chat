@@ -2,12 +2,13 @@ const logger = require('../utils/logger');
 const groqClient = require('../utils/groq.client');
 const config = require('../config');
 const { AI_ROLES } = require('../utils/constants');
+const { ServiceError } = require('../utils/errors');
 
 /**
  * LLM Service
  * 
- * Handles business logic for Large Language Model operations.
- * Maps domain requests to specific API implementations.
+ * Handles Large Language Model operations using Groq API via groqClient.
+ * Fully stateless, config-driven, and robust.
  */
 class LLMService {
   constructor() {
@@ -16,16 +17,59 @@ class LLMService {
   }
 
   /**
+   * Validate parameters before invoking LLM
+   * @private
+   */
+  _validateParams(model, temperature, maxTokens) {
+    if (!this.models[model]) {
+      throw new ServiceError(
+        'LLMService',
+        `Unknown model: ${model}`,
+        'UNKNOWN_MODEL'
+      );
+    }
+
+    if (typeof temperature !== 'number' || temperature < 0 || temperature > 2) {
+      throw new ServiceError(
+        'LLMService',
+        `Invalid temperature: ${temperature}. Must be between 0 and 2.`,
+        'INVALID_TEMPERATURE'
+      );
+    }
+
+    if (maxTokens && (!Number.isInteger(maxTokens) || maxTokens <= 0)) {
+      throw new ServiceError(
+        'LLMService',
+        `Invalid maxTokens: ${maxTokens}. Must be a positive integer.`,
+        'INVALID_MAX_TOKENS'
+      );
+    }
+  }
+
+  /**
+   * Calculate token cost dynamically based on configuration
+   * @private
+   */
+  _calculateCost(model, totalTokens) {
+    const modelConfig = this.models[model];
+    if (!modelConfig || !modelConfig.costPer1k) return 0;
+    return (totalTokens / 1000) * modelConfig.costPer1k;
+  }
+
+  /**
    * Generate an answer based on provided prompts
    * 
    * @param {string} systemPrompt - Instructions for the AI
    * @param {string} userPrompt - User question with context
    * @param {Object} options - Generation options (model, temperature, etc.)
-   * @returns {Promise<Object>} { answer, tokens, model }
+   * @returns {Promise<Object>} { answer, tokens, model, durationMs, cost }
    */
   async generateAnswer(systemPrompt, userPrompt, options = {}) {
     const model = options.model || this.defaultModel;
     const temperature = options.temperature ?? config.llm.defaultTemperature;
+    const maxTokens = options.maxTokens || config.llm.maxTokens;
+
+    this._validateParams(model, temperature, maxTokens);
 
     logger.info(`LLM Request: model=${model}, temp=${temperature}`);
 
@@ -36,30 +80,130 @@ class LLMService {
         { role: AI_ROLES.USER, content: userPrompt }
       ],
       temperature,
-      max_tokens: options.maxTokens || config.llm.maxTokens
+      max_tokens: maxTokens
     };
 
     const startTime = Date.now();
-    const response = await groqClient.chatCompletion(payload);
-    const duration = Date.now() - startTime;
+    try {
+      const response = await groqClient.chatCompletion(payload);
+      const duration = Date.now() - startTime;
 
-    const result = {
-      answer: response.choices[0].message.content,
-      tokens: response.usage?.total_tokens || 0,
+      const totalTokens = response.usage?.total_tokens || 0;
+      const cost = this._calculateCost(model, totalTokens);
+
+      const result = {
+        answer: response.choices[0].message.content,
+        tokens: totalTokens,
+        model,
+        durationMs: duration,
+        cost
+      };
+
+      logger.info('LLM Response received', { 
+        tokens: result.tokens, 
+        duration: result.durationMs,
+        cost: result.cost
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('LLM generation failed', { error: error.message });
+      throw new ServiceError(
+        'LLMService',
+        `LLM generation failed: ${error.message}`,
+        'LLM_GENERATION_FAILED',
+        error
+      );
+    }
+  }
+
+  /**
+   * Generate an answer stream based on provided prompts
+   * 
+   * @param {string} systemPrompt - Instructions for the AI
+   * @param {string} userPrompt - User question with context
+   * @param {Object} options - Generation options (model, temperature, etc.)
+   * @yields {string} Real-time tokens from Groq API
+   */
+  async *generateAnswerStream(systemPrompt, userPrompt, options = {}) {
+    const model = options.model || this.defaultModel;
+    const temperature = options.temperature ?? config.llm.defaultTemperature;
+    const maxTokens = options.maxTokens || config.llm.maxTokens;
+
+    this._validateParams(model, temperature, maxTokens);
+
+    logger.info(`LLM Stream Request: model=${model}, temp=${temperature}`);
+
+    const payload = {
       model,
-      durationMs: duration
+      messages: [
+        { role: AI_ROLES.SYSTEM, content: systemPrompt },
+        { role: AI_ROLES.USER, content: userPrompt }
+      ],
+      temperature,
+      max_tokens: maxTokens
     };
 
-    logger.info('LLM Response received', { 
-      tokens: result.tokens, 
-      duration: result.durationMs 
-    });
+    try {
+      const stream = await groqClient.chatCompletionStream(payload);
+      
+      let buffer = '';
+      for await (const chunk of stream) {
+        buffer += chunk.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // Keep the last incomplete block in the buffer
 
-    return result;
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          
+          if (trimmed === 'data: [DONE]') {
+            return;
+          }
+
+          if (trimmed.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(trimmed.slice(6));
+              const token = data.choices?.[0]?.delta?.content;
+              if (token) {
+                yield token;
+              }
+            } catch (err) {
+              // Ignore partial parsing errors on fragmented packets
+            }
+          }
+        }
+      }
+
+      // Output any residual text
+      if (buffer.startsWith('data: ')) {
+        const trimmed = buffer.trim();
+        if (trimmed !== 'data: [DONE]') {
+          try {
+            const data = JSON.parse(trimmed.slice(6));
+            const token = data.choices?.[0]?.delta?.content;
+            if (token) {
+              yield token;
+            }
+          } catch (err) {
+            // Ignore residual errors
+          }
+        }
+      }
+    } catch (error) {
+      logger.error('LLM streaming failed', { error: error.message });
+      throw new ServiceError(
+        'LLMService',
+        `LLM streaming failed: ${error.message}`,
+        'LLM_GENERATION_FAILED',
+        error
+      );
+    }
   }
 
   /**
    * List available models
+   * @returns {Object[]}
    */
   getModels() {
     return Object.keys(this.models).map(id => ({ id, ...this.models[id] }));

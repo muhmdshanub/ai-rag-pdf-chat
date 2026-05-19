@@ -61,7 +61,9 @@ exports.getUploadProgress = async (req, res, next) => {
       filename: document.filename,
       status: document.status,
       totalChunks: document.total_chunks,
-      progress: document.status === DOCUMENT_STATUS.COMPLETED ? 100 : (document.status === DOCUMENT_STATUS.FAILED ? 0 : 50)
+      progress: document.progress !== undefined && document.progress !== null 
+        ? document.progress 
+        : (document.status === DOCUMENT_STATUS.COMPLETED ? 100 : (document.status === DOCUMENT_STATUS.FAILED ? 0 : 50))
     }
   });
 };

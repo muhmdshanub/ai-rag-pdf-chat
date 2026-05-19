@@ -112,11 +112,22 @@ class DocumentPipeline {
 
     logger.info('Document pipeline started', { documentId, filePath });
 
+    const updateProgress = async (val) => {
+      try {
+        await documentRepository.updateProgress(documentId, val);
+      } catch (err) {
+        logger.warn('Failed to update progress in DB', { documentId, progress: val, error: err.message });
+      }
+      onProgress(val);
+    };
+
     try {
+      await updateProgress(0);
+
       // ── Step 1: Read file ──────────────────────────────────────────
       const buffer = await storage.readFile(filePath);
       pdfParser.validatePDFBuffer(buffer);
-      onProgress(10);
+      await updateProgress(10);
 
       // ── Step 2: Check extraction cache ─────────────────────────────
       const cacheKey = await cache.generateFileKey(filePath);
@@ -135,11 +146,11 @@ class DocumentPipeline {
           await cache.set(CACHE_NAMESPACES.PDF_EXTRACTION, cacheKey, extracted, CACHE_TTL);
         }
       }
-      onProgress(30);
+      await updateProgress(30);
 
       // ── Step 4: Chunk text ─────────────────────────────────────────
       const chunks = await chunking.chunk(extracted.text);
-      onProgress(50);
+      await updateProgress(50);
 
       // ── Step 5: Generate embeddings ────────────────────────────────
       const embeddings = new Array(chunks.length);
@@ -179,7 +190,7 @@ class DocumentPipeline {
       } else {
         logger.info(`Embedding cache hit for all ${chunks.length} chunks!`);
       }
-      onProgress(70);
+      await updateProgress(70);
 
       // ── Step 6: Store chunks + embeddings ──────────────────────────
       const chunksWithEmbeddings = chunks.map((chunk, i) => ({
@@ -187,12 +198,12 @@ class DocumentPipeline {
         embedding: embeddings[i],
       }));
       await chunkRepository.createBatch(documentId, chunksWithEmbeddings);
-      onProgress(90);
+      await updateProgress(90);
 
       // ── Step 7: Update document status ─────────────────────────────
       await documentRepository.updateChunkCount(documentId, chunks.length);
       await documentRepository.updateStatus(documentId, DOCUMENT_STATUS.COMPLETED);
-      onProgress(100);
+      await updateProgress(100);
 
       const duration = Date.now() - startTime;
       logger.info('Document pipeline completed', {
@@ -211,6 +222,9 @@ class DocumentPipeline {
         code: error.code,
         duration,
       });
+
+      // Reset progress to 0 on failure
+      await documentRepository.updateProgress(documentId, 0).catch(() => {});
 
       // Mark document as failed
       await documentRepository.updateStatus(documentId, DOCUMENT_STATUS.FAILED, error.message).catch((dbErr) => {
