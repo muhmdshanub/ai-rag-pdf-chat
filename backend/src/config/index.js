@@ -27,9 +27,9 @@ const envSchema = Joi.object({
   CORS_ORIGINS: Joi.string().default('http://localhost:3000'),
 
   // LLM Configuration
-  LLM_DEFAULT_MODEL: Joi.string().default('llama-3-70b-8192'),
+  LLM_DEFAULT_MODEL: Joi.string().default('llama-3.3-70b-versatile'),
   LLM_DEFAULT_TEMPERATURE: Joi.number().min(0).max(2).default(0.1),
-  LLM_MAX_TOKENS: Joi.number().integer().min(1).max(4096).default(1024),
+  LLM_MAX_TOKENS: Joi.number().integer().min(1).max(32768).default(1024),
 
   // RAG Configuration
   RAG_RECALL_K: Joi.number().integer().min(1).max(100).default(30),
@@ -65,9 +65,28 @@ const config = {
     defaultModel: envVars.LLM_DEFAULT_MODEL,
     defaultTemperature: envVars.LLM_DEFAULT_TEMPERATURE,
     maxTokens: envVars.LLM_MAX_TOKENS,
+    // Groq Production Models (Free on Developer Plan, rate-limited)
+    // Pricing is per 1M tokens (for reference only — developer plan is free)
+    // Docs: https://console.groq.com/docs/models
     models: {
-      'llama-3-70b-8192': { name: 'Llama 3 70B', costPer1k: 0.0007 },
-      'mixtral-8x7b-32768': { name: 'Mixtral 8x7B', costPer1k: 0.0005 }
+      'llama-3.3-70b-versatile': {
+        name: 'Meta Llama 3.3 70B Versatile',
+        contextWindow: 131072,
+        maxCompletionTokens: 32768,
+        speedTps: 280,
+        inputCostPer1m: 0.59,   // USD per 1M input tokens
+        outputCostPer1m: 0.79,  // USD per 1M output tokens
+        recommended: true,      // Best accuracy for RAG — strong instruction following
+      },
+      'llama-3.1-8b-instant': {
+        name: 'Meta Llama 3.1 8B Instant',
+        contextWindow: 131072,
+        maxCompletionTokens: 131072,
+        speedTps: 560,
+        inputCostPer1m: 0.05,   // USD per 1M input tokens
+        outputCostPer1m: 0.08,  // USD per 1M output tokens
+        recommended: false,     // Faster but less accurate — use as fallback
+      }
     }
   },
 

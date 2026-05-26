@@ -47,13 +47,18 @@ class LLMService {
   }
 
   /**
-   * Calculate token cost dynamically based on configuration
+   * Calculate token cost using split input/output pricing (per 1M tokens)
+   * Groq bills input tokens and output (completion) tokens at different rates.
    * @private
    */
-  _calculateCost(model, totalTokens) {
+  _calculateCost(model, promptTokens = 0, completionTokens = 0) {
     const modelConfig = this.models[model];
-    if (!modelConfig || !modelConfig.costPer1k) return 0;
-    return (totalTokens / 1000) * modelConfig.costPer1k;
+    if (!modelConfig) return 0;
+
+    const inputCost  = (promptTokens     / 1_000_000) * (modelConfig.inputCostPer1m  || 0);
+    const outputCost = (completionTokens / 1_000_000) * (modelConfig.outputCostPer1m || 0);
+
+    return inputCost + outputCost;
   }
 
   /**
@@ -88,20 +93,28 @@ class LLMService {
       const response = await groqClient.chatCompletion(payload);
       const duration = Date.now() - startTime;
 
-      const totalTokens = response.usage?.total_tokens || 0;
-      const cost = this._calculateCost(model, totalTokens);
+      const promptTokens     = response.usage?.prompt_tokens     || 0;
+      const completionTokens = response.usage?.completion_tokens || 0;
+      const totalTokens      = response.usage?.total_tokens      || 0;
+      const cost = this._calculateCost(model, promptTokens, completionTokens);
 
       const result = {
         answer: response.choices[0].message.content,
-        tokens: totalTokens,
+        tokens: {
+          prompt:     promptTokens,
+          completion: completionTokens,
+          total:      totalTokens,
+        },
         model,
         durationMs: duration,
         cost
       };
 
       logger.info('LLM Response received', { 
-        tokens: result.tokens, 
-        duration: result.durationMs,
+        promptTokens,
+        completionTokens,
+        totalTokens,
+        durationMs: result.durationMs,
         cost: result.cost
       });
 
