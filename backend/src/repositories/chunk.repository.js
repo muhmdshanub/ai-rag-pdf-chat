@@ -66,6 +66,16 @@ class ChunkRepository {
     return result.rows;
   }
 
+  async findByIds(chunkIds) {
+    if (!chunkIds || chunkIds.length === 0) return [];
+    // Using ANY($1::int[]) to fetch chunks by an array of IDs
+    const result = await pool.query(
+      `SELECT id, chunk_index, content FROM chunks WHERE id = ANY($1::int[])`,
+      [chunkIds]
+    );
+    return result.rows;
+  }
+
   async deleteByDocumentId(documentId) {
     await pool.query(`DELETE FROM chunks WHERE document_id = $1`, [documentId]);
   }

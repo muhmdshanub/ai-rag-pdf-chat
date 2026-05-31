@@ -1,7 +1,7 @@
 /**
  * Embedding Service
  *
- * Generates vector embeddings from text using HuggingFace Inference API.
+ * Generates vector embeddings from text using the official HuggingFace SDK.
  * Model: sentence-transformers/all-MiniLM-L6-v2 (384 dimensions)
  *
  * This is a pure service: no caching, no I/O, just API communication.
@@ -10,11 +10,20 @@
 const logger = require('../utils/logger');
 const { ServiceError } = require('../utils/errors');
 const config = require('../config');
-const hfClient = require('../utils/huggingface.client');
+const { HfInference } = require('@huggingface/inference');
 
 class EmbeddingService {
   constructor() {
-    this.apiUrl = config.huggingfaceApiUrl || 'https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2';
+    if (!config.huggingfaceApiKey) {
+      throw new Error('HUGGINGFACE_API_KEY is not configured');
+    }
+    
+    // Initialize the official HuggingFace Inference SDK
+    // This automatically handles the new Inference Providers routing,
+    // exponential backoff, and 503 cold-start waits.
+    this.hf = new HfInference(config.huggingfaceApiKey);
+    
+    this.modelId = 'sentence-transformers/all-MiniLM-L6-v2';
     this.embeddingDimension = 384;
     this.batchSize = 32;
   }
@@ -44,10 +53,22 @@ class EmbeddingService {
     }
 
     logger.debug(`Generating embedding for text length: ${text.length}`);
-    const result = await hfClient.post(this.apiUrl, { inputs: text });
-    
-    this._validateEmbeddingOutput(result);
-    return result;
+    try {
+      const result = await this.hf.featureExtraction({
+        model: this.modelId,
+        inputs: text
+      });
+      
+      this._validateEmbeddingOutput(result);
+      return result;
+    } catch (error) {
+      throw new ServiceError(
+        'EmbeddingService',
+        `API request failed: ${error.message}`,
+        'API_ERROR',
+        error
+      );
+    }
   }
 
   /**
@@ -68,15 +89,28 @@ class EmbeddingService {
       const batch = texts.slice(i, i + this.batchSize);
       logger.debug(`Processing batch ${i / this.batchSize + 1} (${batch.length} items)`);
       
-      const result = await hfClient.post(this.apiUrl, { inputs: batch });
-      
-      // result should be an array of arrays
-      if (!Array.isArray(result) || result.length !== batch.length) {
-        throw new ServiceError('Embedding', 'Batch API response shape mismatch', 'INVALID_BATCH_RESPONSE');
-      }
+      try {
+        // The SDK featureExtraction automatically maps to the correct new endpoint and pipeline
+        const result = await this.hf.featureExtraction({
+          model: this.modelId,
+          inputs: batch
+        });
+        
+        // result should be an array of arrays when providing batch inputs
+        if (!Array.isArray(result) || result.length !== batch.length) {
+          throw new ServiceError('Embedding', 'Batch API response shape mismatch', 'INVALID_BATCH_RESPONSE');
+        }
 
-      result.forEach(embedding => this._validateEmbeddingOutput(embedding));
-      allEmbeddings.push(...result);
+        result.forEach(embedding => this._validateEmbeddingOutput(embedding));
+        allEmbeddings.push(...result);
+      } catch (error) {
+        throw new ServiceError(
+          'EmbeddingService',
+          `API request failed: ${error.message}`,
+          'API_ERROR',
+          error
+        );
+      }
     }
 
     return allEmbeddings;

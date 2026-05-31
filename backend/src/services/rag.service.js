@@ -126,9 +126,9 @@ class RAGService {
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
-      const similarity = parseFloat(chunk.similarity || 0).toFixed(2);
+      const sourceId = i + 1;
       
-      const part = `[Chunk ${chunk.chunk_index} | Similarity: ${similarity}]:\n${chunk.content}`;
+      const part = `[${sourceId}]:\n${chunk.content}`;
       
       // Prevent exceeding context limits
       if (currentLength + part.length > maxLength && i > 0) {

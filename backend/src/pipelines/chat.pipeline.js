@@ -148,13 +148,14 @@ class ChatPipeline {
       maxContextLength: config.rag.maxContextChars
     });
 
-    // Yield metadata immediately to the consumer before streaming tokens
     yield {
       event: 'metadata',
       data: {
-        chunks: relevantChunks.map(c => ({
-          chunkIndex: c.chunk_index,
-          similarity: parseFloat(c.similarity || 0)
+        chunks: relevantChunks.map((c, index) => ({
+          chunkIndex: index + 1,
+          dbChunkIndex: c.chunk_index,
+          similarity: parseFloat(c.similarity || 0),
+          content: c.content
         }))
       }
     };

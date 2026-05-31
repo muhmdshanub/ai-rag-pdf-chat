@@ -20,7 +20,7 @@ class chatMessageRepository {
 
   async findByDocumentId(documentId, limit = 50) {
     const result = await pool.query(
-      `SELECT id, user_message, ai_response, tokens_used, created_at
+      `SELECT id, user_message, ai_response, retrieved_chunk_ids, tokens_used, created_at
        FROM chat_messages
        WHERE document_id = $1
        ORDER BY created_at ASC
