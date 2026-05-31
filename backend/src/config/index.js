@@ -33,7 +33,7 @@ const envSchema = Joi.object({
 
   // RAG Configuration
   RAG_RECALL_K: Joi.number().integer().min(1).max(100).default(30),
-  RAG_MIN_SIMILARITY: Joi.number().min(0).max(1).default(0.4),
+  RAG_MIN_SIMILARITY: Joi.number().min(0).max(1).default(0.25),
   RAG_MAX_CONTEXT_CHARS: Joi.number().integer().min(500).max(50000).default(12000), // ~3000-4000 tokens
 }).unknown(true);
 
@@ -101,9 +101,9 @@ const config = {
 Guidelines:
 1. Use ONLY information from the provided context.
 2. If the context doesn't contain the answer, say "The provided context doesn't contain information about this."
-3. Cite which chunk numbers you are using.
-4. Be clear and concise.
-5. Do not make up information or use outside knowledge.`
+3. When stating a fact, you MUST append the source citation number in brackets IMMEDIATELY after the specific fact (e.g. "He is an engineer [1] living in NY [2]."). Do not group them all at the end of the sentence.
+4. NEVER use the words "chunk", "context", or "document" in your response. Answer naturally.
+5. Be clear and concise. Do not make up information.`
   },
 
   // File Upload

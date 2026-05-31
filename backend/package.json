@@ -20,6 +20,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@huggingface/inference": "^4.13.18",
     "axios": "^1.16.0",
     "bull": "^4.16.5",
     "cors": "^2.8.6",
@@ -27,9 +28,11 @@
     "express": "^5.2.1",
     "joi": "^18.2.1",
     "multer": "^2.1.1",
+    "mupdf": "^1.27.0",
     "pdf-parse": "^1.1.4",
     "pg": "^8.20.0",
     "redis": "^5.12.1",
+    "tesseract.js": "^7.0.0",
     "winston": "^3.17.0"
   },
   "devDependencies": {
