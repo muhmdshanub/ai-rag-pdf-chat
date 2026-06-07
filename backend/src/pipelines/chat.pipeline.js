@@ -50,6 +50,7 @@ class ChatPipeline {
 
     // Step 3: Wide-Net Retrieval
     const similarChunks = await chunkRepository.findSimilar(
+      message,
       queryEmbedding, 
       documentId, 
       config.rag.recallK
@@ -137,6 +138,7 @@ class ChatPipeline {
 
     // Step 3: Wide-Net Retrieval
     const similarChunks = await chunkRepository.findSimilar(
+      message,
       queryEmbedding, 
       documentId, 
       config.rag.recallK

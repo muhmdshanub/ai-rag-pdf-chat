@@ -74,8 +74,8 @@ class RAGService {
       }
 
       // 2. Gap Detection (The "Elbow" Logic)
-      // If there is a massive drop between this chunk and the previous one, stop.
-      if (i > 0) {
+      // Ensure we at least keep the top 3 chunks to avoid dropping valid info on dense docs
+      if (i >= 3) {
         const prevSimilarity = parseFloat(chunks[i - 1].similarity);
         if (prevSimilarity - similarity > gapThreshold) {
           logger.info(`Detected relevance gap at chunk ${i}: ${prevSimilarity} -> ${similarity}. Cutting off.`);
