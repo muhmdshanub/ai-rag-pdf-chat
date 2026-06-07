@@ -81,7 +81,7 @@ class ChatPipeline {
       userMessage: message,
       aiResponse: answer,
       retrievedChunkIds: relevantChunks.map((c) => c.id),
-      tokensUsed: tokens,
+      tokensUsed: tokens?.total || 0,
       modelUsed: model,
       responseTimeMs,
     });
