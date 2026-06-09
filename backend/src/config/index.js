@@ -35,6 +35,24 @@ const envSchema = Joi.object({
   RAG_RECALL_K: Joi.number().integer().min(1).max(100).default(30),
   RAG_MIN_SIMILARITY: Joi.number().min(0).max(1).default(0.25),
   RAG_MAX_CONTEXT_CHARS: Joi.number().integer().min(500).max(50000).default(12000), // ~3000-4000 tokens
+
+  // Query Rewriter Configuration
+  RAG_QUERY_REWRITER_ENABLED: Joi.boolean().default(true),
+  RAG_QUERY_REWRITER_MODEL: Joi.string().default('llama-3.1-8b-instant'),
+  RAG_QUERY_REWRITER_TIMEOUT_MS: Joi.number().integer().min(100).max(10000).default(2000),
+
+  // MMR Configuration
+  RAG_MMR_ENABLED: Joi.boolean().default(true),
+  RAG_MMR_LAMBDA: Joi.number().min(0).max(1).default(0.7),
+
+  // Re-ranking Configuration
+  RAG_RERANKER_ENABLED: Joi.boolean().default(false), // Off by default (requires API quota)
+  RAG_RERANKER_MODEL: Joi.string().default('cross-encoder/ms-marco-MiniLM-L-6-v2'),
+
+  // Chunking Configuration
+  CHUNKING_CHUNK_SIZE: Joi.number().integer().min(100).max(5000).default(800),
+  CHUNKING_OVERLAP_SIZE: Joi.number().integer().min(0).max(1000).default(200),
+  CHUNKING_MIN_CHUNK_SIZE: Joi.number().integer().min(10).default(50),
 }).unknown(true);
 
 const { error, value: envVars } = envSchema.validate(process.env);
@@ -103,7 +121,27 @@ Guidelines:
 2. If the context doesn't contain the answer, say "The provided context doesn't contain information about this."
 3. When stating a fact, you MUST append the source citation number in brackets IMMEDIATELY after the specific fact (e.g. "He is an engineer [1] living in NY [2]."). Do not group them all at the end of the sentence.
 4. NEVER use the words "chunk", "context", or "document" in your response. Answer naturally.
-5. Be clear and concise. Do not make up information.`
+5. Be clear and concise. Do not make up information.`,
+    queryRewriter: {
+      enabled: envVars.RAG_QUERY_REWRITER_ENABLED,
+      model: envVars.RAG_QUERY_REWRITER_MODEL,
+      timeoutMs: envVars.RAG_QUERY_REWRITER_TIMEOUT_MS,
+    },
+    mmr: {
+      enabled: envVars.RAG_MMR_ENABLED,
+      lambda: envVars.RAG_MMR_LAMBDA,
+    },
+    reranker: {
+      enabled: envVars.RAG_RERANKER_ENABLED,
+      model: envVars.RAG_RERANKER_MODEL,
+    },
+  },
+
+  // Chunking Settings
+  chunking: {
+    chunkSize: envVars.CHUNKING_CHUNK_SIZE,
+    overlapSize: envVars.CHUNKING_OVERLAP_SIZE,
+    minChunkSize: envVars.CHUNKING_MIN_CHUNK_SIZE,
   },
 
   // File Upload

@@ -174,6 +174,88 @@ class RAGService {
       user: userPrompt
     };
   }
+  /**
+   * Apply Maximal Marginal Relevance to diversify the context.
+   *
+   * Prevents sending 5 near-identical chunks to the LLM by penalising
+   * chunks that are too similar to already-selected chunks.
+   *
+   * Algorithm:
+   *   For each candidate chunk, compute:
+   *     MMR_score = λ × sim_to_query − (1-λ) × max_sim_to_selected
+   *   Select the chunk with the highest MMR score, repeat until budget.
+   *
+   * @param {Array}  chunks          - Refined chunks (each must have .similarity and .embedding)
+   * @param {Object} options
+   * @param {number} options.lambda  - Balance relevance vs diversity (0=pure diversity, 1=pure relevance)
+   * @param {number} options.maxChunks - Max chunks to return
+   * @returns {Array} Diversified chunk array
+   */
+  applyMMR(chunks, options = {}) {
+    const lambda = options.lambda ?? config.rag.mmr.lambda;
+    const maxChunks = options.maxChunks ?? chunks.length;
+
+    if (!chunks || chunks.length <= 1) return chunks;
+
+    // Chunks without embeddings cannot be MMR-processed — pass through
+    const hasEmbeddings = chunks.every(c => Array.isArray(c.embedding) && c.embedding.length > 0);
+    if (!hasEmbeddings) {
+      logger.debug('MMR skipped: chunks missing embedding vectors');
+      return chunks;
+    }
+
+    try {
+      const cosineSimilarity = (a, b) => {
+        let dot = 0, normA = 0, normB = 0;
+        for (let i = 0; i < a.length; i++) {
+          dot   += a[i] * b[i];
+          normA += a[i] * a[i];
+          normB += b[i] * b[i];
+        }
+        return normA === 0 || normB === 0 ? 0 : dot / (Math.sqrt(normA) * Math.sqrt(normB));
+      };
+
+      const selected = [];
+      const remaining = [...chunks];
+
+      while (selected.length < maxChunks && remaining.length > 0) {
+        let bestIdx = 0;
+        let bestScore = -Infinity;
+
+        for (let i = 0; i < remaining.length; i++) {
+          const candidate = remaining[i];
+          const relevance = parseFloat(candidate.similarity); // sim to query (from vector/FTS)
+
+          // Max similarity to any already-selected chunk
+          const redundancy = selected.length === 0
+            ? 0
+            : Math.max(...selected.map(s => cosineSimilarity(candidate.embedding, s.embedding)));
+
+          const mmrScore = lambda * relevance - (1 - lambda) * redundancy;
+
+          if (mmrScore > bestScore) {
+            bestScore = mmrScore;
+            bestIdx = i;
+          }
+        }
+
+        selected.push(remaining[bestIdx]);
+        remaining.splice(bestIdx, 1);
+      }
+
+      logger.info('MMR diversification applied', {
+        input: chunks.length,
+        output: selected.length,
+        lambda,
+      });
+
+      return selected;
+
+    } catch (error) {
+      logger.warn('MMR failed, returning original chunk order', { error: error.message });
+      return chunks;
+    }
+  }
 }
 
 module.exports = new RAGService();

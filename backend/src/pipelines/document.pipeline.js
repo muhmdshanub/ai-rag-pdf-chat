@@ -108,6 +108,7 @@ class DocumentPipeline {
    */
   async process(documentId, filePath, onProgress = () => {}) {
     const { storage, pdfParser, cache, chunking, embedding, documentRepository, chunkRepository } = require('../registry');
+    const config = require('../config');
     const startTime = Date.now();
 
     logger.info('Document pipeline started', { documentId, filePath });
@@ -149,7 +150,11 @@ class DocumentPipeline {
       await updateProgress(30);
 
       // ── Step 4: Chunk text ─────────────────────────────────────────
-      const chunks = await chunking.chunk(extracted.text);
+      const chunks = await chunking.chunk(extracted.text, {
+        chunkSize: config.chunking.chunkSize,
+        overlapSize: config.chunking.overlapSize,
+        minChunkSize: config.chunking.minChunkSize,
+      });
       await updateProgress(50);
 
       // ── Step 5: Generate embeddings ────────────────────────────────

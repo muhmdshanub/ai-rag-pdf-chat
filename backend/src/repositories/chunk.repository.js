@@ -45,21 +45,21 @@ class ChunkRepository {
   async findSimilar(queryText, queryEmbedding, documentId, topK = 5) {
     const result = await pool.query(
       `WITH vector_search AS (
-         SELECT id, chunk_index, content, 1 - (embedding <=> $2::vector) AS similarity
+         SELECT id, chunk_index, content, embedding, 1 - (embedding <=> $2::vector) AS similarity
          FROM chunks WHERE document_id = $3
          ORDER BY embedding <=> $2::vector LIMIT $4
        ),
        keyword_search AS (
-         SELECT id, chunk_index, content, 0.8 AS similarity
+         SELECT id, chunk_index, content, embedding, 0.8 AS similarity
          FROM chunks 
          WHERE document_id = $3 
            AND plainto_tsquery('english', $1)::text != ''
            AND fts_vector @@ replace(plainto_tsquery('english', $1)::text, '&', '|')::tsquery
          ORDER BY ts_rank(fts_vector, replace(plainto_tsquery('english', $1)::text, '&', '|')::tsquery) DESC LIMIT 3
        )
-       SELECT id, chunk_index, content, MAX(similarity) as similarity
+       SELECT id, chunk_index, content, embedding, MAX(similarity) as similarity
        FROM (SELECT * FROM vector_search UNION ALL SELECT * FROM keyword_search) combined
-       GROUP BY id, chunk_index, content
+       GROUP BY id, chunk_index, content, embedding
        ORDER BY similarity DESC
        LIMIT $4`,
       [queryText, JSON.stringify(queryEmbedding), documentId, topK]

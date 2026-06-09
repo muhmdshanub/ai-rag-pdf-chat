@@ -21,6 +21,8 @@ const ChunkingService = require('./services/chunking.service');
 const EmbeddingService = require('./services/embedding.service');
 const RAGService = require('./services/rag.service');
 const LLMService = require('./services/llm.service');
+const QueryRewriterService = require('./services/query-rewriter.service');
+const RerankerService = require('./services/reranker.service');
 
 const DocumentPipeline = require('./pipelines/document.pipeline');
 const ChatPipeline = require('./pipelines/chat.pipeline');
@@ -43,6 +45,8 @@ const registry = {
   embedding: EmbeddingService,
   rag: RAGService,
   llm: LLMService,
+  queryRewriter: QueryRewriterService,
+  reranker: RerankerService,
 
   // Repositories
   documentRepository: DocumentRepository,

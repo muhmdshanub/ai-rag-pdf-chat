@@ -23,7 +23,7 @@ class ChatPipeline {
    * @returns {Promise<{answer: string, chunks: number, tokensUsed: number, model: string}>}
    */
   async ask(documentId, message, options = {}) {
-    const { embedding, rag, llm, cache, documentRepository, chunkRepository, chatMessageRepository } = require('../registry');
+    const { embedding, rag, llm, cache, queryRewriter, reranker, documentRepository, chunkRepository, chatMessageRepository } = require('../registry');
     const { NotFoundError } = require('../utils/errors');
     const config = require('../config');
     const startTime = Date.now();
@@ -48,19 +48,28 @@ class ChatPipeline {
       await cache.set(CACHE_NAMESPACES.EMBEDDINGS, cacheKey, queryEmbedding, 86400); // Cache for 24 hours
     }
 
+    // Step 2.5: Query Rewriting — extract keywords for FTS (vector still uses original question)
+    const ftsQuery = await queryRewriter.extractKeywords(message);
+
     // Step 3: Wide-Net Retrieval
     const similarChunks = await chunkRepository.findSimilar(
-      message,
-      queryEmbedding, 
-      documentId, 
+      ftsQuery,
+      queryEmbedding,
+      documentId,
       config.rag.recallK
     );
 
+    // Step 3.5: Cross-Encoder Re-ranking (reorders chunks by joint query+passage score)
+    const rerankedChunks = await reranker.rerank(message, similarChunks);
+
     // Step 4: Dynamic Refinement (Perfect RAG logic)
-    const relevantChunks = rag.refineContext(similarChunks, {
+    const refinedChunks = rag.refineContext(rerankedChunks, {
       minSimilarity: config.rag.minSimilarity,
       maxContextLength: config.rag.maxContextChars
     });
+
+    // Step 4.5: MMR Diversification — remove near-duplicate chunks
+    const relevantChunks = rag.applyMMR(refinedChunks, { lambda: config.rag.mmr.lambda });
 
     // Step 5: Build context from retrieved chunks
     const context = rag.buildContext(relevantChunks);
@@ -113,7 +122,7 @@ class ChatPipeline {
    * @yields {Object} Stream events ({ event: 'metadata' | 'token', data: any })
    */
   async *askStream(documentId, message, options = {}) {
-    const { embedding, rag, llm, cache, documentRepository, chunkRepository, chatMessageRepository } = require('../registry');
+    const { embedding, rag, llm, cache, queryRewriter, reranker, documentRepository, chunkRepository, chatMessageRepository } = require('../registry');
     const { NotFoundError } = require('../utils/errors');
     const config = require('../config');
     const startTime = Date.now();
@@ -136,19 +145,28 @@ class ChatPipeline {
       await cache.set(CACHE_NAMESPACES.EMBEDDINGS, cacheKey, queryEmbedding, 86400); // Cache for 24 hours
     }
 
+    // Step 2.5: Query Rewriting — extract keywords for FTS
+    const ftsQuery = await queryRewriter.extractKeywords(message);
+
     // Step 3: Wide-Net Retrieval
     const similarChunks = await chunkRepository.findSimilar(
-      message,
-      queryEmbedding, 
-      documentId, 
+      ftsQuery,
+      queryEmbedding,
+      documentId,
       config.rag.recallK
     );
 
+    // Step 3.5: Cross-Encoder Re-ranking
+    const rerankedChunks = await reranker.rerank(message, similarChunks);
+
     // Step 4: Dynamic Refinement (Perfect RAG logic)
-    const relevantChunks = rag.refineContext(similarChunks, {
+    const refinedChunks = rag.refineContext(rerankedChunks, {
       minSimilarity: config.rag.minSimilarity,
       maxContextLength: config.rag.maxContextChars
     });
+
+    // Step 4.5: MMR Diversification
+    const relevantChunks = rag.applyMMR(refinedChunks, { lambda: config.rag.mmr.lambda });
 
     yield {
       event: 'metadata',
