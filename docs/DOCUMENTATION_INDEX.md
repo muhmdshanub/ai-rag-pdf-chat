@@ -5,7 +5,14 @@
 ### 🎯 **Start Here:**
 Read in this order for best understanding:
 
-1. **ARCHITECTURE_SUMMARY.md** ← START HERE (5 min read)
+1. **HOW_IT_WORKS.md** ← THE DEFINITIVE GUIDE (30 min read)
+   - Every service explained from actual source code
+   - Both flows end-to-end with exact logic
+   - All 15 best practices: problem → solution → code location
+   - Caching strategy, error handling, graceful degradation
+   - Exact data shapes between every step
+
+2. **CAPABILITIES_AND_LIMITATIONS.md** ← READ BEFORE TESTING (5 min read)
    - Overview of all 8 layers
    - Key design decisions
    - Complete data flow
