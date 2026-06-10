@@ -6,7 +6,12 @@
 
 ---
 
-## Table of Contents
+## System Architecture Diagram
+
+![RAG System Architecture — Upload Flow and Chat Flow](d:/brototype-work/ai-projects/ai-rag-pdf-chat/docs/rag_system_diagram.png)
+
+---
+
 
 1. [Big Picture — Two Flows](#1-big-picture--two-flows)
 2. [Upload Flow — How a PDF Becomes Searchable](#2-upload-flow--how-a-pdf-becomes-searchable)
