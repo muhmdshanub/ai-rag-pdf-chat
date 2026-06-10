@@ -39,41 +39,53 @@ Save to disk → Create DB record → Queue job → Return immediately
 [Background] Extract → Chunk → Embed → Store → Mark complete
 ```
 
-### Chat Flow
+### Chat Flow (7-Step Enterprise Pipeline)
 ```
 User question
   ↓
-Embed question → Find similar chunks → Build context → Call LLM → Return answer
+Step 2:   Embed query (Redis cache → HuggingFace API)
   ↓
-Save to chat history
+Step 2.5: Query Rewriting → LLM extracts FTS keywords (2s timeout + graceful fallback)
+  ↓
+Step 3:   Hybrid Search → Vector (pgvector) + FTS (tsvector) — SQL UNION + MAX dedup
+  ↓
+Step 3.5: Cross-Encoder Re-ranking [optional, RAG_RERANKER_ENABLED=true]
+  ↓
+Step 4:   refineContext() → minSimilarity filter → Gap Detection → Token Budget
+  ↓
+Step 4.5: MMR Diversification → applyMMR(λ=0.7) removes near-duplicate chunks
+  ↓
+Step 5-7: buildContext → buildPrompt → LLM stream → save to DB
 ```
 
 ---
 
-## 🗄️ Database Schema (Simplified)
+## 🗄️ Database Schema
 
 ```
 documents
 ├─ id (PK)
-├─ filename
+├─ filename, original_name, file_path, file_size, mime_type
 ├─ status: 'processing' | 'completed' | 'failed'
+├─ progress: 0-100
 └─ total_chunks
 
-chunks (90k rows for large docs)
+chunks
 ├─ id (PK)
-├─ document_id (FK) → documents
+├─ document_id (FK → documents, CASCADE)
 ├─ chunk_index
-├─ text
-├─ embedding: vector(384)  ← pgvector for similarity search
-└─ INDEX: ivfflat on embedding (fast nearest neighbor)
+├─ content (TEXT)
+├─ embedding: vector(384)         ← pgvector cosine similarity
+├─ fts_vector: tsvector GENERATED  ← auto Full Text Search index
+└─ INDEX: GIN on fts_vector (fast FTS), ivfflat on embedding
 
 chat_messages
 ├─ id (PK)
 ├─ document_id (FK)
-├─ user_message
-├─ ai_response
-├─ retrieved_chunks: int[] (which chunks used)
-└─ tokens_used (for tracking cost)
+├─ user_message, ai_response
+├─ retrieved_chunk_ids: int[]     ← which chunks were used
+├─ tokens_used, model_used
+└─ response_time_ms
 ```
 
 ---
@@ -136,12 +148,14 @@ Latency: 2-10 sec (non-blocking)
 
 | Principle | Implementation | Benefit |
 |-----------|---|---|
-| **Separation of Concerns** | Controllers → Services → DB | Easy to test, modify |
-| **Async Processing** | Bull Queue for PDF processing | Non-blocking uploads |
-| **Caching** | Redis for embeddings & session | 10x faster responses |
-| **Vector Search** | pgvector with IVFFLAT index | Semantic similarity search |
-| **Error Handling** | Try-catch + retry logic | Resilient to API failures |
-| **Monitoring** | Winston logging + metrics | Debug issues in production |
+| **Separation of Concerns** | Pipelines → Services → Repositories | Easy to test, modify |
+| **Async Processing** | BullMQ for PDF processing | Non-blocking uploads |
+| **Caching** | Redis for embeddings (24h) + PDF extraction (1h) | 10x faster responses |
+| **Hybrid Search** | pgvector + PostgreSQL FTS UNION | Handles both semantic + keyword queries |
+| **Query Rewriting** | LLM keyword extraction before FTS | Eliminates generic word noise |
+| **MMR Diversification** | applyMMR() with cosine inter-chunk similarity | No redundant context sent to LLM |
+| **Graceful Degradation** | All new features fall back silently on failure | System never breaks due to one component |
+| **Error Handling** | Try-catch + BullMQ retry (3x exponential backoff) | Resilient to API failures |
 
 ---
 
@@ -324,29 +338,27 @@ Load Tests
 
 ## 🎓 Learning Roadmap
 
-**Week 1-2:** Build current stack
-- ✅ Database schema
-- ✅ Express API
-- ✅ React frontend
-- ✅ RAG flow
+**Foundation (Built)**
+- ✅ Database schema (documents, chunks, chat_messages)
+- ✅ Express API with full error handling
+- ✅ Chat UI with streaming + source citations
+- ✅ Async PDF processing with BullMQ
+- ✅ Embedding caching (Redis 24h TTL)
 
-**Week 3-4:** Add features
-- Chunk reranking (improve relevance)
-- Hybrid search (semantic + keyword)
-- User authentication
-- Multi-document chat
+**Enterprise RAG (Built)**
+- ✅ Hybrid Search — Vector + Full Text Search (PostgreSQL)
+- ✅ Query Rewriting — LLM keyword extraction before FTS
+- ✅ MMR Diversification — applyMMR(λ=0.7)
+- ✅ Cross-Encoder Re-ranking — HuggingFace (opt-in)
+- ✅ Chunk Overlap Tuning — 800-char chunks, 200-char overlap
+- ✅ Gap Detection + Token Budgeting in refineContext()
 
-**Week 5-6:** Scale & optimize
-- Caching layer deep dive
-- Database indexing optimization
-- Load testing
-- Deployment to production
-
-**Week 7-8:** Explore advanced
-- Custom embedding models
-- Fine-tuned LLMs
-- Agentic workflows
-- Multi-turn conversations
+**Next to Explore**
+- Sub-Query Decomposition (fixes aggregation questions)
+- RAGAS evaluation pipeline (automated quality scoring)
+- Parent-child chunking strategy
+- Multi-document cross-chat
+- User authentication + document ownership
 
 ---
 

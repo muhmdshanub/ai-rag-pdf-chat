@@ -42,11 +42,13 @@ You now have **4 comprehensive architecture documents** that explain every layer
 - **What:** Reusable AI/ML components
 - **Tech:** Node.js services
 - **Services:**
-  - `pdfParser` → Extract text from PDFs
-  - `chunkingService` → Split text into overlapping chunks
-  - `embeddingService` → Convert text to vectors
-  - `ragService` → Retrieve similar chunks
-  - `llmService` → Generate answers
+  - `pdfParser` → Extract text from PDFs (with OCR fallback)
+  - `chunkingService` → Split text into overlapping chunks (800 chars, 200 overlap)
+  - `embeddingService` → Convert text to 384-dim vectors (HuggingFace batch API)
+  - `queryRewriterService` → LLM keyword extraction for clean FTS queries ← NEW
+  - `ragService` → refineContext() + applyMMR() for chunk selection ← UPDATED
+  - `rerankerService` → Cross-encoder re-ranking (opt-in) ← NEW
+  - `llmService` → Generate streaming/non-streaming answers (Groq)
 
 ### **Layer 5: Third-Party AI APIs**
 - **What:** External services
@@ -98,21 +100,27 @@ Extract text → Chunk → Generate embeddings → Store vectors in DB
 Frontend polls and sees "Ready to chat"
 ```
 
-### Chat Flow (Sync - Real-time)
+### Chat Flow (7-Step Enterprise Pipeline)
 ```
 User asks question
   ↓
-Convert question to vector (embedding)
+Step 2:   Convert question to vector (Redis cache → HuggingFace API)
   ↓
-Search PostgreSQL using pgvector for similar chunks
+Step 2.5: Query Rewriting → LLM extracts critical FTS keywords (2s timeout)
   ↓
-Combine top 5 chunks into context string
+Step 3:   Hybrid Search → Vector (pgvector) + FTS (tsvector) UNION + MAX dedup
   ↓
-Call Groq API with: context + question
+Step 3.5: Cross-Encoder Re-ranking [optional]
   ↓
-Return answer to user
+Step 4:   refineContext() → minSimilarity → gap detection → token budget
   ↓
-Save Q&A to chat history
+Step 4.5: applyMMR() → remove near-duplicate chunks (λ=0.7)
+  ↓
+Step 5:   Build context with [N] source IDs
+  ↓
+Step 6:   Call Groq API (stream or complete) → return answer with citations
+  ↓
+Step 7:   Save Q&A + retrieved_chunk_ids to chat history
 ```
 
 ---
@@ -189,20 +197,20 @@ id (PK)         | filename               | status      | total_chunks
 3               | "aws-whitepaper.pdf"   | completed   | 203
 ```
 
-### chunks table (optimized for similarity search)
+### chunks table
 ```sql
-id (PK) | document_id | chunk_index | text                    | embedding (vector)
-501     | 1           | 0           | "Chapter 1: Basics..."  | [0.23, 0.45, ...]
-502     | 1           | 1           | "Kubernetes pods are..." | [0.34, 0.56, ...]
-...     (150+ more chunks for doc 1)
-701     | 3           | 0           | "AWS Lambda functions..." | [0.12, 0.89, ...]
+id (PK) | document_id | chunk_index | content                  | embedding (vector) | fts_vector
+501     | 1           | 0           | "Chapter 1: Basics..."   | [0.23, 0.45, ...]  | 'chapter':1 'basic':3
+502     | 1           | 1           | "Kubernetes pods are..." | [0.34, 0.56, ...]  | 'kubernet':1 'pod':2
 ```
 
-### Indexes for Performance
+### Indexes
 ```sql
--- Fast similarity search
-CREATE INDEX idx_chunks_embedding 
-ON chunks USING ivfflat (embedding vector_cosine_ops);
+-- Fast cosine similarity search
+CREATE INDEX idx_chunks_embedding ON chunks USING ivfflat (embedding vector_cosine_ops);
+
+-- Fast full text search
+CREATE INDEX chunks_fts_idx ON chunks USING GIN (fts_vector);
 
 -- Fast document lookups
 CREATE INDEX idx_chunks_document_id ON chunks(document_id);
@@ -319,22 +327,30 @@ assert(answer.includes('retrieval'));
 By understanding this architecture, you now know:
 
 ✅ **How to structure a full-stack AI app**
-- Frontend, API, services, external APIs, database
+- Frontend, API, pipelines, services, repositories, external APIs, database
 
 ✅ **How vector databases work**
-- Embeddings, similarity search, pgvector
+- Embeddings, cosine similarity search, pgvector
 
 ✅ **How RAG (Retrieval-Augmented Generation) works**
-- Retrieve relevant context → Feed to LLM → Get answer
+- Retrieve relevant context → Feed to LLM → Get answer with source citations
+
+✅ **How Hybrid Search works**
+- Vector search + Full Text Search merged via SQL UNION with Synthetic Scoring
+
+✅ **Why Query Rewriting matters**
+- Generic words like "worked", "many", "what" pollute FTS and boost wrong chunks
+- LLM extracts proper nouns + acronyms → clean, precise FTS queries
+
+✅ **How MMR diversification works**
+- Prevents sending 5 near-identical chunks to the LLM
+- Maximises: λ × relevance − (1-λ) × redundancy
 
 ✅ **How to build for scale**
-- Async processing, caching, indexing
+- Async processing (BullMQ), Redis caching, database indexing
 
-✅ **How to integrate third-party AI services**
-- Groq API, HuggingFace API, error handling
-
-✅ **Production-grade practices**
-- Error handling, monitoring, deployment, secrets management
+✅ **Production-grade RAG practices**
+- Graceful degradation, feature flags via env vars, gap detection, token budgeting
 
 ---
 
