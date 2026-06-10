@@ -205,40 +205,20 @@ CHUNKING_MIN_CHUNK_SIZE=50
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting Started (Local Development)
 
-### Prerequisites
-- Docker Desktop
-- Node.js 18+
-- Groq API key (free at [console.groq.com](https://console.groq.com))
-- HuggingFace API key (free at [huggingface.co](https://huggingface.co))
+See the full setup guide: **[docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md)**
 
-### Setup
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/muhmdshanub/ai-rag-pdf-chat.git
-cd ai-rag-pdf-chat
-
-# 2. Start Postgres + Redis
-docker-compose up -d
-
-# 3. Install backend dependencies
-cd backend && npm install
-
-# 4. Set up environment variables
-cp .env.example .env
-# Edit .env with your API keys
-
-# 5. Run database migrations
-npm run migrate
-
-# 6. Start the backend
-npm run dev
-
-# 7. Open the frontend
-# Open frontend/index.html in your browser (or serve with Live Server)
-```
+**Quick summary:**
+1. Install Node.js 18+ and Docker Desktop
+2. Create free accounts on [Groq](https://console.groq.com) and [HuggingFace](https://huggingface.co) → get API keys
+3. `docker-compose up -d postgres redis` — start the database and cache
+4. Create `backend/.env` with your API keys (template in the guide)
+5. `cd backend && npm install && npm run db:init` — install and migrate
+6. `node run_migration.js` — apply the FTS/hybrid search migration
+7. `npm run dev` — start the backend on port 5000
+8. Open a new terminal → `cd frontend && npm install && npm run dev` — start the frontend on port 3000
+9. Open **http://localhost:3000**
 
 ---
 
@@ -314,7 +294,9 @@ See [`docs/CAPABILITIES_AND_LIMITATIONS.md`](docs/CAPABILITIES_AND_LIMITATIONS.m
 
 | File | Description |
 |---|---|
+| [LOCAL_SETUP.md](docs/LOCAL_SETUP.md) | ← **Start here to run locally** |
 | [CAPABILITIES_AND_LIMITATIONS.md](docs/CAPABILITIES_AND_LIMITATIONS.md) | ← **Read before testing** |
+| [HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) | Complete implementation guide |
 | [ARCHITECTURE_SUMMARY.md](docs/ARCHITECTURE_SUMMARY.md) | 8-layer system overview |
 | [ARCHITECTURE_CHEAT_SHEET.md](docs/ARCHITECTURE_CHEAT_SHEET.md) | Quick reference |
 | [DATA_FLOW_DIAGRAMS.md](docs/DATA_FLOW_DIAGRAMS.md) | ASCII flow diagrams |
