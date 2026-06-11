@@ -7,8 +7,8 @@
  */
 export default function UserMessageBubble({ content, timestamp }) {
   return (
-    <div className="max-w-[80%] self-end animate-enter flex flex-col items-end">
-      <div className="bg-surface-container-high border border-white/5 p-4 rounded-l-xl rounded-tr-xl rounded-br-sm shadow-sm">
+    <div className="max-w-[80%] self-end animate-enter flex flex-col items-end group">
+      <div className="bg-surface-container-high border border-white/5 p-4 rounded-l-xl rounded-tr-xl rounded-br-sm shadow-sm hover-glow">
         <p className="font-body-md text-body-md text-on-surface whitespace-pre-wrap">
           {content}
         </p>

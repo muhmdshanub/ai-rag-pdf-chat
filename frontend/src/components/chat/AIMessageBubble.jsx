@@ -210,7 +210,7 @@ export default function AIMessageBubble({
       </div>
 
       {/* AI Message Content Box */}
-      <div className="flex-1 border-l-2 border-primary bg-surface/60 backdrop-blur-sm p-5 rounded-r-xl rounded-bl-xl shadow-sm border-y border-r border-white/5 relative min-w-0">
+      <div className="flex-1 border-l-2 border-primary bg-surface/60 backdrop-blur-sm p-5 rounded-r-xl rounded-bl-xl shadow-sm border-y border-r border-white/5 relative min-w-0 hover-glow">
         <div className="prose prose-invert max-w-none font-body-md text-body-md text-on-surface break-words">
           {parseMarkdown(content, citations, onCitationClick)}
           {isStreaming && (

@@ -13,7 +13,7 @@ export default function AIThinkingBubble({ message = 'AI is retrieving context..
           hourglass_empty
         </span>
       </div>
-      <div className="bg-surface/30 backdrop-blur-sm p-4 rounded-r-xl rounded-bl-xl border border-white/5 flex items-center gap-3">
+      <div className="bg-surface/30 backdrop-blur-sm p-4 rounded-r-xl rounded-bl-xl border border-white/5 flex items-center gap-3 hover-glow">
         <span className="font-label-md text-label-md shimmer-text">
           {message}
         </span>

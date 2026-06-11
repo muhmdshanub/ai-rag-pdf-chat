@@ -4,6 +4,7 @@ import useDocuments from '../../hooks/useDocuments';
 import ChatHeader from './ChatHeader';
 import ChatScrollArea from './ChatScrollArea';
 import ChatInputBar from './ChatInputBar';
+import DocumentManagerLanding from '../documents/DocumentManagerLanding';
 
 /**
  * ChatCanvas component coordinating prompt inputs, scrolling history feeds,
@@ -28,21 +29,27 @@ export default function ChatArea() {
 
   // Automatically load chat history when the selected document changes
   useEffect(() => {
-    loadHistory(activeDocumentId);
+    if (activeDocumentId) {
+      loadHistory(activeDocumentId);
+    }
   }, [activeDocumentId, loadHistory]);
 
   const activeDoc = documents.find((doc) => doc.id === activeDocumentId);
   const activeDocName = activeDoc ? (activeDoc.original_name || activeDoc.originalName || activeDoc.filename || activeDoc.fileName) : null;
 
   const handleSubmit = () => {
-    if (inputVal.trim() && !isGenerating) {
+    if (inputVal.trim() && !isGenerating && activeDocumentId) {
       sendMessage(inputVal, activeDocumentId);
       setInputVal('');
     }
   };
 
+  if (!activeDocumentId) {
+    return <DocumentManagerLanding />;
+  }
+
   return (
-    <section className="flex-1 flex flex-col relative min-w-0 bg-background overflow-hidden">
+    <section className="flex-1 flex flex-col relative min-w-0 bg-background overflow-hidden animate-enter">
       <ChatHeader
         activeDocumentName={activeDocName}
         model={model}
@@ -64,7 +71,7 @@ export default function ChatArea() {
         value={inputVal}
         onChange={setInputVal}
         onSubmit={handleSubmit}
-        isDisabled={isGenerating || activeDocumentId === null}
+        isDisabled={isGenerating}
         tokenCount={tokenStats.count}
         tokensPerSecond={tokenStats.speed}
       />
