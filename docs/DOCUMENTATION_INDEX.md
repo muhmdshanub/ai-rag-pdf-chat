@@ -1,469 +1,128 @@
-# 📚 Architecture Documentation Index
+# 📚 Documentation Index
 
-## Quick Navigation
-
-### 🎯 **Start Here:**
-Read in this order for best understanding:
-
-1. **HOW_IT_WORKS.md** ← THE DEFINITIVE GUIDE (30 min read)
-   - Every service explained from actual source code
-   - Both flows end-to-end with exact logic
-   - All 15 best practices: problem → solution → code location
-   - Caching strategy, error handling, graceful degradation
-   - Exact data shapes between every step
-
-2. **CAPABILITIES_AND_LIMITATIONS.md** ← READ BEFORE TESTING (5 min read)
-   - Overview of all 8 layers
-   - Key design decisions
-   - Complete data flow
-   - What you've learned
-
-2. **ARCHITECTURE_CHEAT_SHEET.md** (10 min read)
-   - Quick reference for each layer
-   - Technology matrix
-   - Request lifecycle
-   - Scaling path
-
-3. **CAPABILITIES_AND_LIMITATIONS.md** ← READ BEFORE TESTING (5 min read)
-   - All supported question types (Direct, Indirect, Clubbed, Negative…)
-   - Supported document types (Narrative, Dense, Scanned…)
-   - All features with status
-   - Known limitations and workarounds
-   - Feature roadmap
-
-4. **INFRASTRUCTURE_DESIGN.md** (20 min read)
-   - Deep dive into each layer
-   - Code examples
-   - Database schema
-   - Deployment strategies
-
-5. **DATA_FLOW_DIAGRAMS.md** (15 min read)
-   - Visual representation of data movement
-   - Upload flow detailed
-   - Chat flow detailed
-   - Error handling flows
-
-6. **RAG_CHATBOT_PLAN.md** (implementation guide)
-   - Exact implementation roadmap
-   - All code samples
-   - Step-by-step building guide
-   - GitHub repo structure
+Complete guide to all documentation in this project. Read in the order below for best understanding.
 
 ---
 
-## 📖 Document Quick Reference
+## 🗺️ Reading Order
 
-### For Understanding Architecture
-```
-ARCHITECTURE_SUMMARY.md
-    ↓
-ARCHITECTURE_CHEAT_SHEET.md
-    ↓
-DATA_FLOW_DIAGRAMS.md
-```
+### 1. [HOW_IT_WORKS.md](HOW_IT_WORKS.md) — *The Definitive Implementation Guide*
+> **Start here if you want to understand the system deeply.**
 
-### For Implementation
-```
-RAG_CHATBOT_PLAN.md
-    ↓
-INFRASTRUCTURE_DESIGN.md
-    (reference while coding)
-```
-
-### For Quick Lookup
-```
-ARCHITECTURE_CHEAT_SHEET.md (always open this)
-```
+Covers every service and feature written directly from the actual source code:
+- Both flows end-to-end: Upload Pipeline (7 steps) and Chat Pipeline (7 steps)
+- Every service explained: ChunkingService, EmbeddingService, QueryRewriterService, RAGService (refineContext, applyMMR), RerankerService, LLMService
+- All 15 RAG best practices: problem → solution → exact file and function
+- Caching strategy (what's cached, where, TTL)
+- Error handling and graceful degradation behaviour
+- Exact data shapes flowing between each pipeline step
+- System architecture diagram
 
 ---
 
-## 🎯 Find What You Need
+### 2. [LOCAL_SETUP.md](LOCAL_SETUP.md) — *How to Run It Locally*
+> **Read this to get the project running on your machine.**
 
-### "I want to understand the architecture"
-→ **ARCHITECTURE_SUMMARY.md**
-
-### "How does data flow through the system?"
-→ **DATA_FLOW_DIAGRAMS.md**
-
-### "What technology should I use?"
-→ **ARCHITECTURE_CHEAT_SHEET.md** (Technology Matrix)
-
-### "How do I implement this?"
-→ **RAG_CHATBOT_PLAN.md**
-
-### "Tell me more about Layer X"
-→ **INFRASTRUCTURE_DESIGN.md** (Layer-by-layer section)
-
-### "How do I scale this?"
-→ **INFRASTRUCTURE_DESIGN.md** (Scaling Considerations section)
-
-### "What's the database schema?"
-→ **INFRASTRUCTURE_DESIGN.md** (Layer 6 section)
-
-### "How do I deploy?"
-→ **INFRASTRUCTURE_DESIGN.md** (Layer 8 section)
-
-### "What should I monitor?"
-→ **ARCHITECTURE_CHEAT_SHEET.md** (Monitoring Checklist)
+- Prerequisites (Node.js 18+, Docker Desktop)
+- How to create a free Groq account and get an API key
+- How to create a free HuggingFace account and get an API key
+- Step-by-step setup (infrastructure → env → migrations → backend → frontend)
+- Full `.env` template with every variable explained
+- Useful commands (connect to DB, flush Redis, reset everything)
+- Troubleshooting (10 most common errors and fixes)
+- Port map for all services
 
 ---
 
-## 📊 The Complete Picture
+### 3. [CAPABILITIES_AND_LIMITATIONS.md](CAPABILITIES_AND_LIMITATIONS.md) — *What Works and What Doesn't*
+> **Read this before testing or demoing the system.**
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   YOUR AI RAG ARCHITECTURE                   │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  Layer 1: React Frontend                                    │
-│  ├─ Vite, Tailwind, Axios                                   │
-│  └─ Chat UI, File Upload                                    │
-│                    ↓                                         │
-│  Layer 2: Express.js API Gateway                            │
-│  ├─ HTTP routes, middleware                                 │
-│  └─ CORS, error handling, validation                        │
-│                    ↓                                         │
-│  Layer 3: Controllers                                       │
-│  ├─ uploadController                                        │
-│  ├─ chatController                                          │
-│  └─ documentController                                      │
-│                    ↓                                         │
-│  Layer 4: AI Services                                       │
-│  ├─ pdfParser        → Extract text                         │
-│  ├─ chunkingService  → Split into chunks                    │
-│  ├─ embeddingService → Text → Vectors                       │
-│  ├─ ragService       → Similarity search                    │
-│  └─ llmService       → Generate answers                     │
-│                    ↓                                         │
-│  Layer 5: External APIs                                     │
-│  ├─ Groq             → LLM (text generation)                │
-│  └─ HuggingFace      → Embeddings (text → vectors)          │
-│                    ↓                                         │
-│  Layer 6: PostgreSQL + pgvector                             │
-│  ├─ documents table                                         │
-│  ├─ chunks table (with embeddings)                          │
-│  ├─ chat_messages table                                     │
-│  └─ File storage (./uploads/)                               │
-│                    ↓                                         │
-│  Layer 7: Redis + Bull Queue                                │
-│  ├─ Embedding cache                                         │
-│  ├─ Session storage                                         │
-│  └─ Async job processing                                    │
-│                    ↓                                         │
-│  Layer 8: Docker + Railway                                  │
-│  ├─ Containerization                                        │
-│  └─ Cloud deployment                                        │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
+- All supported question types with examples (Direct, Indirect, Semantic, Negative, Multi-part…)
+- All supported document types (Narrative, Technical, Resume/CV, Dense Bullet-Point…)
+- Full feature status table (16 features with ✅ / ❌ / ⚙️)
+- Known limitations with root-cause explanations
+- Workarounds for each limitation
+- Feature roadmap (what would fix each limitation)
 
 ---
 
-## 🔄 Key Flows At A Glance
+### 4. [ARCHITECTURE_CHEAT_SHEET.md](ARCHITECTURE_CHEAT_SHEET.md) — *Quick Reference*
+> **Keep this open while working on the codebase.**
 
-### Upload Flow
-```
-User uploads PDF
-→ Save to disk
-→ Create DB record
-→ Queue async job
-→ Return immediately
-→ [Background] Extract → Chunk → Embed → Store
-→ Status updates to 'completed'
-```
-**Read:** DATA_FLOW_DIAGRAMS.md (Section 1️⃣)
-
-### Chat Flow
-```
-User asks question
-→ Embed question
-→ Search similar chunks
-→ Build context
-→ Call Groq API
-→ Return answer
-→ Save to DB
-```
-**Read:** DATA_FLOW_DIAGRAMS.md (Section 2️⃣)
+- 8-layer stack at a glance
+- Updated 7-step chat pipeline flow
+- Database schema (all columns including `fts_vector`)
+- Technology matrix (what's used and why)
+- Key design principles (Hybrid Search, MMR, Query Rewriting, Graceful Degradation)
+- What's built vs what's next
+- Success metrics
 
 ---
 
-## 🛠️ Technology Stack At A Glance
+### 5. [ARCHITECTURE_SUMMARY.md](ARCHITECTURE_SUMMARY.md) — *System Overview*
+> **High-level understanding of the complete architecture.**
 
-| Layer | Tech | Purpose |
-|-------|------|---------|
-| 1 | React, Vite, Tailwind | User interface |
-| 2 | Express.js | HTTP server |
-| 3 | JavaScript | Business logic |
-| 4 | Node.js services | AI processing |
-| 5 | Groq, HuggingFace | External AI APIs |
-| 6 | PostgreSQL, pgvector | Persistent storage |
-| 7 | Redis, Bull | Caching, async jobs |
-| 8 | Docker, Railway | Deployment |
-
-**Read:** ARCHITECTURE_CHEAT_SHEET.md (Technology Matrix)
+- Layer-by-layer breakdown (all 8 layers)
+- Complete Upload and Chat flow diagrams
+- Database design with example data
+- Service dependency map
+- Performance targets
+- Security considerations
+- What you've learned from building this
 
 ---
 
-## 📚 Document Contents
+### 6. [DATA_FLOW_DIAGRAMS.md](DATA_FLOW_DIAGRAMS.md) — *Visual Flow Reference*
+> **For visual learners — ASCII diagrams of every flow.**
 
-### ARCHITECTURE_SUMMARY.md
-- Overview of 8-layer stack
-- Key design decisions explained
-- Complete data flow
-- What you've learned
-- Next steps
-
-**Best for:** Understanding the big picture
-
----
-
-### ARCHITECTURE_CHEAT_SHEET.md
-- 8-layer stack summary
-- Service communication map
-- Database schema (simplified)
-- Technology matrix
-- Data flow summary
-- Request lifecycle
-- Storage architecture
-- Testing strategy
-- Monitoring checklist
-- Learning roadmap
-
-**Best for:** Quick lookup while coding
-
----
-
-### INFRASTRUCTURE_DESIGN.md
-- Detailed breakdown of each layer
-- Code examples for each service
-- Complete database schema
-- API endpoints documentation
-- Redis use cases
-- Bull queue job processing
-- Deployment strategies
-- Monitoring & logging setup
-- Scaling considerations
-
-**Best for:** Deep understanding and implementation
-
----
-
-### DATA_FLOW_DIAGRAMS.md
-- File upload flow (detailed ASCII diagram)
-- Chat flow (detailed ASCII diagram)
-- Data layer interactions
+- Detailed upload flow diagram
+- Detailed chat flow diagram
 - Error handling flows
-- Async job flow (state machine)
-- Deployment & persistence
-
-**Best for:** Understanding how data moves through the system
+- State machine diagrams
+- Deployment flow
 
 ---
 
-### RAG_CHATBOT_PLAN.md
-- Project overview
-- Tech stack explained
-- Architecture diagram
-- Folder structure
-- Step-by-step implementation plan
-- All service code samples
-- Controller code samples
-- Frontend component samples
-- Package.json with dependencies
+### 7. [CODING_GUIDELINES.md](CODING_GUIDELINES.md) — *How to Write Code for This Project*
+> **Read before contributing or extending the codebase.**
 
-**Best for:** Actually building the project
+- Folder structure conventions
+- Service vs Pipeline vs Repository responsibilities
+- Naming conventions
+- Error handling patterns
+- Logging standards
+- How to add a new feature
 
 ---
 
-## 🎯 Common Questions → Best Document
+## 📁 What's in `/docs`
 
 ```
-Q: "What's the architecture?"
-A: ARCHITECTURE_SUMMARY.md
-
-Q: "How does the system work?"
-A: DATA_FLOW_DIAGRAMS.md
-
-Q: "What tech should I use?"
-A: ARCHITECTURE_CHEAT_SHEET.md
-
-Q: "How do I build this?"
-A: RAG_CHATBOT_PLAN.md
-
-Q: "Tell me more about [Layer X]"
-A: INFRASTRUCTURE_DESIGN.md
-
-Q: "What should I monitor?"
-A: ARCHITECTURE_CHEAT_SHEET.md (Monitoring Checklist)
-
-Q: "How do I scale?"
-A: INFRASTRUCTURE_DESIGN.md (Scaling section)
-
-Q: "What's the database design?"
-A: INFRASTRUCTURE_DESIGN.md (Layer 6)
-
-Q: "How do I deploy?"
-A: INFRASTRUCTURE_DESIGN.md (Layer 8)
-
-Q: "How long does X take?"
-A: ARCHITECTURE_CHEAT_SHEET.md (Request Lifecycle)
-
-Q: "What goes in the .env file?"
-A: ARCHITECTURE_CHEAT_SHEET.md (Secrets Management)
+docs/
+├── HOW_IT_WORKS.md                  ← Implementation deep dive
+├── LOCAL_SETUP.md                   ← Local dev setup guide
+├── CAPABILITIES_AND_LIMITATIONS.md  ← What works / what doesn't
+├── ARCHITECTURE_CHEAT_SHEET.md      ← Quick reference
+├── ARCHITECTURE_SUMMARY.md          ← System overview
+├── DATA_FLOW_DIAGRAMS.md            ← ASCII flow diagrams
+├── CODING_GUIDELINES.md             ← Code standards
+├── DOCUMENTATION_INDEX.md           ← This file
+└── rag_system_diagram.png           ← Architecture diagram image
 ```
 
 ---
 
-## 🚀 Implementation Checklist
+## ❓ Find What You Need
 
-Using **RAG_CHATBOT_PLAN.md**:
-
-- [ ] Phase 1: Setup & Database (Days 1-2)
-  - [ ] Initialize backend
-  - [ ] PostgreSQL + pgvector setup
-  - [ ] Database schema
-  - [ ] Environment variables
-
-- [ ] Phase 2: Core Services (Days 3-4)
-  - [ ] PDF Parser
-  - [ ] Chunking Service
-  - [ ] Embedding Service
-  - [ ] RAG Service
-  - [ ] LLM Service
-
-- [ ] Phase 3: API Routes (Days 5-6)
-  - [ ] Upload Controller
-  - [ ] Chat Controller
-  - [ ] Document Controller
-  - [ ] Job Queue setup
-
-- [ ] Phase 4: Frontend (Days 7-8)
-  - [ ] FileUpload component
-  - [ ] ChatInterface component
-  - [ ] DocumentList component
-  - [ ] API integration
-
----
-
-## 📖 Reading Time Estimates
-
-| Document | Time | Best For |
-|----------|------|----------|
-| ARCHITECTURE_SUMMARY.md | 5 min | Overview |
-| ARCHITECTURE_CHEAT_SHEET.md | 10 min | Reference |
-| DATA_FLOW_DIAGRAMS.md | 15 min | Visual learners |
-| INFRASTRUCTURE_DESIGN.md | 20 min | Detailed understanding |
-| RAG_CHATBOT_PLAN.md | 30 min | Implementation |
-| **Total** | **80 min** | Complete understanding |
-
----
-
-## 🎓 Learning Path
-
-### Beginner (Want to understand)
-1. ARCHITECTURE_SUMMARY.md
-2. ARCHITECTURE_CHEAT_SHEET.md
-3. DATA_FLOW_DIAGRAMS.md
-→ You now understand the architecture
-
-### Intermediate (Want to build)
-1. RAG_CHATBOT_PLAN.md
-2. INFRASTRUCTURE_DESIGN.md (reference while coding)
-3. Implement Phase 1-4
-→ You now have a working app
-
-### Advanced (Want to optimize)
-1. INFRASTRUCTURE_DESIGN.md (scaling section)
-2. ARCHITECTURE_CHEAT_SHEET.md (monitoring)
-3. Implement optimizations
-→ You now have a production-ready app
-
----
-
-## 💾 Files Generated
-
-```
-📂 Documentation
-├─ ARCHITECTURE_SUMMARY.md          (This overview)
-├─ ARCHITECTURE_CHEAT_SHEET.md      (Quick reference)
-├─ INFRASTRUCTURE_DESIGN.md         (Detailed breakdown)
-├─ DATA_FLOW_DIAGRAMS.md           (Visual flows)
-├─ RAG_CHATBOT_PLAN.md             (Implementation)
-├─ SETUP.md                         (Getting started)
-└─ PROGRESS.md                      (Checklist)
-```
-
----
-
-## 🎯 Next Actions
-
-**Right now:**
-1. Read ARCHITECTURE_SUMMARY.md (5 min)
-2. Open ARCHITECTURE_CHEAT_SHEET.md in another tab (keep it open)
-3. Choose your path: Understand first or Build first?
-
-**Understand First Path:**
-- Read DATA_FLOW_DIAGRAMS.md
-- Read INFRASTRUCTURE_DESIGN.md
-- Then start building with RAG_CHATBOT_PLAN.md
-
-**Build First Path:**
-- Open RAG_CHATBOT_PLAN.md
-- Start Phase 1 implementation
-- Reference other docs as questions come up
-
----
-
-## 🔗 Document Relationships
-
-```
-         ┌─────────────────────┐
-         │ ARCHITECTURE_SUMMARY │ ← START HERE
-         └──────────┬──────────┘
-                    │
-         ┌──────────┴──────────┬──────────────┐
-         │                     │              │
-         ▼                     ▼              ▼
-    ┌────────┐         ┌─────────────┐  ┌──────────┐
-    │ CHEAT  │────────→│ DATA FLOWS  │  │ DETAILED │
-    │ SHEET  │         └─────────────┘  │ DESIGN   │
-    └────────┘                          └──────────┘
-         ▲                                    │
-         │                                    ▼
-         └────────────────────────┐      ┌─────────────┐
-                                  └─────→│ RAG CHATBOT │
-                                         │ PLAN        │
-                                         └─────────────┘
-                                              │
-                                              ▼
-                                         START BUILDING!
-```
-
----
-
-## ✅ Success Indicators
-
-You'll know you understand the architecture when you can:
-
-- [ ] Explain the 8 layers to someone else
-- [ ] Draw the data flow from upload to chat
-- [ ] Identify which layer handles what responsibility
-- [ ] Explain why each technology was chosen
-- [ ] Describe how to scale each layer
-- [ ] List what to monitor in production
-- [ ] Build each layer independently
-
----
-
-## 🎉 You're All Set!
-
-You have:
-✅ Complete 8-layer architecture
-✅ All design decisions explained
-✅ Data flow diagrams
-✅ Implementation roadmap
-✅ Quick reference guides
-
-**Next:** Start building! Go to RAG_CHATBOT_PLAN.md and implement Phase 1.
-
-Good luck! 🚀
+| I want to... | Read this |
+|---|---|
+| Get the project running locally | [LOCAL_SETUP.md](LOCAL_SETUP.md) |
+| Understand how the chat pipeline works | [HOW_IT_WORKS.md](HOW_IT_WORKS.md) — Section 3 |
+| Understand what hybrid search is | [HOW_IT_WORKS.md](HOW_IT_WORKS.md) — Section 4.4 |
+| Understand what MMR does | [HOW_IT_WORKS.md](HOW_IT_WORKS.md) — Section 4.6 |
+| Understand what query rewriting does | [HOW_IT_WORKS.md](HOW_IT_WORKS.md) — Section 4.3 |
+| Know why a question got a bad answer | [CAPABILITIES_AND_LIMITATIONS.md](CAPABILITIES_AND_LIMITATIONS.md) |
+| Get a quick overview of the stack | [ARCHITECTURE_CHEAT_SHEET.md](ARCHITECTURE_CHEAT_SHEET.md) |
+| Add a new service or feature | [CODING_GUIDELINES.md](CODING_GUIDELINES.md) |
+| See all env vars and what they do | [LOCAL_SETUP.md](LOCAL_SETUP.md) — Environment Variables section |
+| See the system architecture diagram | [HOW_IT_WORKS.md](HOW_IT_WORKS.md) — top of file |
